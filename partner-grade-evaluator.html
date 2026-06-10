@@ -482,7 +482,7 @@ function renderMfrList() {
     const latestTotal = latestRec.total || 0;
     const latestPct = latestTotal ? ((latestEarned / latestTotal) * 100).toFixed(1) : "0.0";
 
-    return `<div class="mfr-card ${isSelected ? "selected" : ""}" onclick='selectMfr(${JSON.stringify(g.name)})'>
+    return `<div class="mfr-card ${isSelected ? "selected" : ""}" data-mfr-name="${esc(g.name)}">
       <div class="mfr-icon">${cats}</div>
       <div class="mfr-info">
         <div class="mfr-name">${esc(g.name)}</div>
@@ -493,6 +493,13 @@ function renderMfrList() {
     </div>`;
   }).join("")}</div>`;
   area.innerHTML = html;
+  /* 이벤트 등록 — innerHTML 교체 후 매번 재등록 */
+  area.querySelectorAll(".mfr-card").forEach(card => {
+    card.addEventListener("click", () => selectMfr(card.dataset.mfrName));
+  });
+  area.querySelectorAll(".hist-chip").forEach(chip => {
+    chip.addEventListener("click", e => { e.stopPropagation(); toggleRec(chip.dataset.recId); });
+  });
 }
 
 function renderHistoryRow(records) {
@@ -500,11 +507,14 @@ function renderHistoryRow(records) {
     const gr = calcGrade(rec.earned, rec.total, rec.clType);
     const isSelected = S.selectedRecIds.includes(rec.id);
     const label = `${rec.header?.심사일자 || "?"} ${TYPE_ICONS[rec.clType]||""} ${gr}등급`;
-    return `<span class="hist-chip ${isSelected ? "selected" : ""}" onclick="event.stopPropagation();toggleRec(${rec.id})">${label}</span>`;
+    return `<span class="hist-chip ${isSelected ? "selected" : ""}" data-rec-id="${esc(String(rec.id))}">${label}</span>`;
   }).join("");
-  return `<div class="history-row" style="margin-top:8px;">${chips}
+  const row = `<div class="history-row" style="margin-top:8px;">${chips}
     <span style="font-size:10px;color:#90a4ae;padding:3px 0;">← 분석에 포함할 회차 선택 (미선택 시 전체 포함)</span>
   </div>`;
+  /* hist-chip 클릭 이벤트는 renderMfrList의 이벤트 위임 이후 별도 등록 필요 없음
+     — area.querySelectorAll 이후 hist-chip 등록은 renderMfrList에서 처리 */
+  return row;
 }
 
 function selectMfr(name) {
@@ -743,7 +753,7 @@ ${pdfBase64 ? "[자료 2: 품질 인사이트 리포트 (첨부 PDF 문서 참�
 function getSelectedRecords() {
   const group = S.allRecords.filter(r => (r.header?.업소명 || "(업소명 없음)") === S.selectedMfr);
   if (S.selectedRecIds.length === 0) return group; /* 전체 */
-  return group.filter(r => S.selectedRecIds.includes(r.id));
+  return group.filter(r => S.selectedRecIds.includes(String(r.id)));
 }
 
 async function runAnalysis() {
