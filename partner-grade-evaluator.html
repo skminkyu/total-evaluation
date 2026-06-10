@@ -482,7 +482,7 @@ function renderMfrList() {
     const latestTotal = latestRec.total || 0;
     const latestPct = latestTotal ? ((latestEarned / latestTotal) * 100).toFixed(1) : "0.0";
 
-    return `<div class="mfr-card ${isSelected ? "selected" : ""}" onclick="selectMfr(${JSON.stringify(g.name)})">
+    return `<div class="mfr-card ${isSelected ? "selected" : ""}" onclick='selectMfr(${JSON.stringify(g.name)})'>
       <div class="mfr-icon">${cats}</div>
       <div class="mfr-info">
         <div class="mfr-name">${esc(g.name)}</div>
