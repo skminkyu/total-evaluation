@@ -594,9 +594,21 @@ function calcGrade(earned, total, type) {
 
 function judgeStr(earned, total, type) {
   if (!total) return "-";
-  if (earned === total) return "적합";
+  if (type === "haccp_s") return "-"; /* haccp_s는 적합여부 미사용 */
+  if (type === "cgmp") {
+    if (earned >= 90) return "적합";
+    if (earned >= 61) return "조건부 적합";
+    return "부적합";
+  }
+  if (type === "haccp_g") {
+    if (earned >= 104) return "적합";
+    if (earned >= 69) return "조건부 적합";
+    return "부적합";
+  }
   const p = (earned / total) * 100;
-  return p >= 70 ? "조건부 적합" : "부적합";
+  if (p >= 90) return "적합";
+  if (p >= 70) return "조건부 적합";
+  return "부적합";
 }
 
 function pctStr(e, t) { return t ? ((e / t) * 100).toFixed(1) : "0.0"; }
@@ -659,6 +671,11 @@ async function callClaude(evalText, pdfBase64) {
 아래 자료를 종합 분석하여 협력사에 대한 종합 등급 평가서 및 개선 조치 요구서를 작성해주세요.
 
 카테고리: ${catLabel}${!hasMfrEval ? " — 패션 카테고리는 제조사 현장 평가를 별도 진행하지 않으므로, 품질 인사이트 리포트(PDF)만으로 종합 평가합니다." : ""}
+
+[평가 기준 참고]
+- 화장품 (CGMP): 만점 96점 / S≥90점, A≥80점, B≥71점, C≥61점, D<61점 / 적합≥90점, 조건부 적합≥61점, 부적합<61점
+- 식품 제조·가공업 (HACCP_G): 만점 115점 / S≥104점, A≥92점, B≥81점, C≥69점, D<69점 / 적합≥104점, 조건부 적합≥69점, 부적합<69점
+- 농·축·수산물 취급업소 (HACCP_S): 만점 33점 (용수관리 N/A 시 30점) / 만점33: S≥30, A≥26, B≥23, C≥20 / 만점30: S≥27, A≥24, B≥21, C≥18 / 적합여부 판정 미사용
 
 [자료 1: 제조사 현장 평가 이력 (구조화 데이터)]
 ${hasMfrEval ? evalText : "해당 없음 — 패션 카테고리는 제조사 현장 평가 미실시"}
