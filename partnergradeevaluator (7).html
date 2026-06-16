@@ -1,0 +1,1080 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>SK스토아 협력사 종합 등급 평가</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&family=DM+Serif+Display&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Noto Sans KR',sans-serif;background:#f0f2f5;color:#1a1a2e;min-height:100vh;}
+
+/* ── 상단바 ── */
+.topbar{background:#0f2547;color:#fff;padding:11px 20px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:100;box-shadow:0 2px 8px rgba(0,0,0,.3);}
+.logo{font-family:'DM Serif Display',serif;font-size:17px;color:#e8c872;cursor:pointer;user-select:none;}
+.logo-sub{font-size:11px;color:#90caf9;margin-left:4px;}
+.tb-btns{display:flex;gap:6px;margin-left:auto;}
+.tb-btn{background:none;border:1px solid rgba(255,255,255,.25);color:#cfd8dc;padding:5px 13px;border-radius:20px;cursor:pointer;font-size:12px;font-family:'Noto Sans KR',sans-serif;transition:.2s;text-decoration:none;display:inline-flex;align-items:center;}
+.tb-btn:hover{background:#e8c872;border-color:#e8c872;color:#0f2547;font-weight:600;}
+
+/* ── 레이아웃 ── */
+.wrap{max-width:960px;margin:0 auto;padding:18px 16px 60px;}
+
+/* ── 카드 공통 ── */
+.card{background:#fff;border-radius:12px;padding:18px;margin-bottom:14px;box-shadow:0 2px 8px rgba(0,0,0,.07);}
+.card-title{font-family:'DM Serif Display',serif;font-size:15px;color:#0f2547;margin-bottom:14px;display:flex;align-items:center;gap:8px;}
+.card-title .ct-badge{font-family:'Noto Sans KR',sans-serif;font-size:10px;font-weight:700;background:#e8eaf6;color:#3949ab;padding:2px 8px;border-radius:10px;}
+
+/* ── 설정 패널 ── */
+.cfg-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px 16px;}
+.cfg-row{display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:end;margin-top:10px;}
+.ff{display:flex;flex-direction:column;gap:3px;}
+.ff label{font-size:11px;font-weight:600;color:#546e7a;letter-spacing:.3px;}
+.ff input,.ff select{border:1px solid #cfd8dc;border-radius:7px;padding:7px 10px;font-size:13px;font-family:'Noto Sans KR',sans-serif;outline:none;transition:.2s;background:#fff;color:#1a1a2e;}
+.ff input:focus,.ff select:focus{border-color:#0f2547;}
+.ff input[type="password"]{letter-spacing:.05em;}
+.status-chip{display:inline-flex;align-items:center;gap:5px;font-size:11px;padding:4px 10px;border-radius:16px;font-weight:600;}
+.chip-ok{background:#e8f5e9;color:#2e7d32;border:1px solid #a5d6a7;}
+.chip-warn{background:#fff3e0;color:#e65100;border:1px solid #ffcc02;}
+.chip-info{background:#e3f2fd;color:#1565c0;border:1px solid #90caf9;}
+
+/* ── 버튼 ── */
+.btn{border:none;border-radius:7px;padding:8px 16px;font-size:13px;font-family:'Noto Sans KR',sans-serif;font-weight:500;cursor:pointer;transition:.2s;display:inline-flex;align-items:center;gap:5px;}
+.btn-dark{background:#0f2547;color:#fff;}
+.btn-dark:hover{background:#1a3a6e;}
+.btn-dark:disabled{opacity:.45;cursor:not-allowed;}
+.btn-gold{background:#e8c872;color:#0f2547;font-weight:700;}
+.btn-gold:hover{background:#d4a800;}
+.btn-gold:disabled{opacity:.45;cursor:not-allowed;}
+.btn-ol{background:#fff;color:#0f2547;border:1.5px solid #0f2547;}
+.btn-ol:hover{background:#0f2547;color:#fff;}
+.btn-sm{font-size:11px;padding:3px 9px;border-radius:5px;border:none;cursor:pointer;font-family:'Noto Sans KR',sans-serif;transition:.2s;}
+.btn-red-sm{background:#ffebee;color:#c62828;border:1px solid #ef9a9a;}
+.btn-red-sm:hover{background:#c62828;color:#fff;}
+.btn-blue-sm{background:#e3f2fd;color:#1565c0;border:1px solid #90caf9;}
+.btn-blue-sm:hover{background:#1565c0;color:#fff;}
+
+/* ── 제조사 리스트 ── */
+.mfr-empty{text-align:center;padding:32px;color:#90a4ae;font-size:13px;}
+.mfr-list{display:flex;flex-direction:column;gap:8px;}
+.mfr-card{border:2px solid #e0e4ea;border-radius:10px;padding:12px 14px;cursor:pointer;transition:.2s;display:flex;align-items:center;gap:12px;}
+.mfr-card:hover{border-color:#0f2547;box-shadow:0 3px 10px rgba(15,37,71,.1);}
+.mfr-card.selected{border-color:#0f2547;background:#f0f4ff;}
+.mfr-icon{font-size:22px;flex-shrink:0;}
+.mfr-info{flex:1;min-width:0;}
+.mfr-name{font-weight:700;font-size:13px;margin-bottom:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.mfr-meta{font-size:11px;color:#78909c;}
+.mfr-grades{display:flex;gap:5px;flex-shrink:0;}
+
+/* ── 등급 배지 ── */
+.grade-chip{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;flex-shrink:0;}
+.gs{background:#f3e5f5;color:#7B1FA2;} .ga{background:#e3f2fd;color:#1565c0;} .gb{background:#e8f5e9;color:#2e7d32;}
+.gc{background:#fff8e1;color:#f57f17;} .gd{background:#ffebee;color:#c62828;}
+.grade-large{font-size:36px;font-weight:800;line-height:1;}
+.grade-large.gs{color:#7B1FA2;} .grade-large.ga{color:#1565c0;} .grade-large.gb{color:#2e7d32;}
+.grade-large.gc{color:#f57f17;} .grade-large.gd{color:#c62828;}
+
+/* ── 평가 이력 칩 ── */
+.history-row{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px;}
+.hist-chip{border:1px solid #e0e4ea;border-radius:7px;padding:3px 9px;font-size:11px;display:flex;align-items:center;gap:4px;cursor:pointer;transition:.2s;}
+.hist-chip:hover{border-color:#0f2547;}
+.hist-chip.selected{border-color:#0f2547;background:#e8eaf6;}
+
+/* ── 업로드 박스 ── */
+.upload-box{border:2px dashed #cfd8dc;border-radius:10px;padding:18px;text-align:center;cursor:pointer;position:relative;background:#f8f9ff;transition:.2s;}
+.upload-box:hover{border-color:#0f2547;background:#e8eaf6;}
+.upload-box.has-file{border:2px solid #2e7d32;background:#e8f5e9;}
+.upload-box input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;}
+.upload-icon{font-size:26px;margin-bottom:6px;}
+.upload-label{font-size:12px;font-weight:600;color:#37474f;margin-bottom:2px;}
+.upload-sub{font-size:11px;color:#90a4ae;}
+.upload-filename{font-size:11px;font-weight:600;color:#2e7d32;margin-top:4px;word-break:break-all;}
+.upload-opt{font-size:10px;background:#fff3e0;color:#e65100;border:1px solid #ffcc02;border-radius:4px;padding:1px 6px;display:inline-block;margin-top:3px;}
+
+/* ── 분석 버튼 영역 ── */
+.analyze-bar{background:#fff;border-radius:12px;padding:16px 18px;margin-bottom:14px;box-shadow:0 2px 8px rgba(0,0,0,.07);display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+.btn-analyze{padding:11px 28px;font-size:14px;font-weight:700;border-radius:9px;}
+.analyze-hint{font-size:11px;color:#78909c;flex:1;}
+
+/* ── 로딩 ── */
+.loading-card{background:#fff;border-radius:12px;padding:36px;text-align:center;margin-bottom:14px;box-shadow:0 2px 8px rgba(0,0,0,.07);}
+.spinner{width:42px;height:42px;border:3px solid #e0e4ea;border-top-color:#0f2547;border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 14px;}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-steps{display:flex;flex-direction:column;gap:5px;max-width:320px;margin:12px auto 0;text-align:left;}
+.lstep{font-size:12px;color:#90a4ae;display:flex;align-items:center;gap:6px;}
+.lstep.done{color:#2e7d32;} .lstep.active{color:#0f2547;font-weight:600;}
+
+/* ── 결과 영역 ── */
+.result-wrap{display:none;}
+
+/* ── 종합 등급 카드 ── */
+.grade-hero{background:linear-gradient(135deg,#0f2547 0%,#1a3a6e 100%);border-radius:14px;padding:22px 24px;margin-bottom:14px;color:#fff;display:grid;grid-template-columns:auto 1fr auto;gap:16px;align-items:center;}
+.grade-hero-left{display:flex;flex-direction:column;align-items:center;gap:4px;}
+.grade-hero-label{font-size:10px;letter-spacing:.08em;opacity:.7;}
+.grade-hero-mid{}
+.grade-hero-name{font-family:'DM Serif Display',serif;font-size:20px;color:#e8c872;margin-bottom:2px;}
+.grade-hero-sub{font-size:12px;opacity:.75;margin-bottom:10px;}
+.grade-hero-pills{display:flex;gap:6px;flex-wrap:wrap;}
+.gpill{font-size:10px;font-weight:700;padding:3px 10px;border-radius:12px;}
+.gpill-ok{background:rgba(46,125,50,.3);color:#a5d6a7;border:1px solid rgba(165,214,167,.3);}
+.gpill-warn{background:rgba(245,127,23,.3);color:#ffcc02;border:1px solid rgba(255,204,2,.3);}
+.gpill-bad{background:rgba(198,40,40,.3);color:#ef9a9a;border:1px solid rgba(239,154,154,.3);}
+.gpill-info{background:rgba(21,101,192,.3);color:#90caf9;border:1px solid rgba(144,202,249,.3);}
+.grade-hero-right{text-align:right;}
+.risk-label{font-size:10px;opacity:.6;margin-bottom:3px;}
+.risk-value{font-size:13px;font-weight:700;color:#e8c872;}
+
+/* ── 지표 요약 그리드 ── */
+.metric-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px;}
+.metric-card{background:#fff;border-radius:10px;padding:12px;box-shadow:0 2px 8px rgba(0,0,0,.07);text-align:center;}
+.metric-label{font-size:10px;color:#78909c;font-weight:600;letter-spacing:.04em;text-transform:uppercase;margin-bottom:4px;}
+.metric-value{font-size:1.1rem;font-weight:800;color:#0f2547;}
+.metric-sub{font-size:10px;color:#90a4ae;margin-top:2px;}
+
+/* ── 섹션 블록 ── */
+.block{background:#fff;border-radius:12px;padding:16px 18px;margin-bottom:10px;box-shadow:0 2px 8px rgba(0,0,0,.06);}
+.block-head{font-weight:700;font-size:13px;margin-bottom:12px;display:flex;align-items:center;gap:7px;}
+.block-head .cnt{font-size:10px;font-weight:700;background:#e8eaf6;color:#3949ab;padding:2px 8px;border-radius:10px;}
+
+/* ── 개선 조치 항목 ── */
+.action-list{display:flex;flex-direction:column;gap:8px;}
+.action-item{border:1px solid #e0e4ea;border-radius:10px;padding:12px 13px;display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:start;}
+.action-item.p1{border-left:4px solid #c62828;} .action-item.p2{border-left:4px solid #f57f17;} .action-item.p3{border-left:4px solid #1565c0;}
+.pnum{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;flex-shrink:0;margin-top:2px;}
+.p1 .pnum{background:#ffebee;color:#c62828;} .p2 .pnum{background:#fff8e1;color:#f57f17;} .p3 .pnum{background:#e3f2fd;color:#1565c0;}
+.action-cat{font-size:10px;font-weight:700;color:#78909c;letter-spacing:.06em;text-transform:uppercase;margin-bottom:2px;}
+.action-issue{font-size:13px;font-weight:700;margin-bottom:3px;line-height:1.4;}
+.action-detail{font-size:11px;color:#546e7a;line-height:1.65;}
+.action-basis{font-size:10px;color:#90a4ae;margin-top:4px;}
+.deadline-badge{font-size:10px;font-weight:700;background:#f0f2f5;border:1px solid #e0e4ea;padding:3px 8px;border-radius:6px;white-space:nowrap;flex-shrink:0;}
+.responsible{font-size:10px;color:#90a4ae;text-align:center;margin-top:3px;}
+
+/* ── 이슈 항목 ── */
+.issue-item{border:1px solid #e0e4ea;border-radius:9px;padding:10px 12px;display:flex;gap:8px;align-items:start;margin-bottom:6px;}
+.issue-score{flex-shrink:0;font-size:10px;font-weight:700;background:#ffebee;color:#c62828;border:1px solid #ef9a9a;padding:2px 7px;border-radius:5px;margin-top:1px;white-space:nowrap;}
+.issue-body{}
+.issue-section{font-size:10px;color:#78909c;font-weight:600;letter-spacing:.04em;text-transform:uppercase;margin-bottom:2px;}
+.issue-text{font-size:12px;line-height:1.6;}
+
+/* ── 품질불만 순위 ── */
+.complaint-item{border:1px solid #e0e4ea;border-radius:9px;padding:10px 12px;display:flex;gap:8px;align-items:start;margin-bottom:6px;}
+.rank-circle{width:26px;height:26px;border-radius:50%;background:#e8eaf6;color:#3949ab;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;flex-shrink:0;}
+.complaint-body{flex:1;}
+.complaint-title{display:flex;align-items:center;gap:6px;margin-bottom:3px;}
+.complaint-reason{font-size:13px;font-weight:700;}
+.complaint-count-badge{font-size:10px;font-weight:700;background:#e8eaf6;color:#3949ab;border:1px solid #c5cae9;padding:1px 7px;border-radius:10px;}
+.complaint-implication{font-size:11px;color:#546e7a;line-height:1.6;}
+
+/* ── 교차분석 / 결론 ── */
+.analysis-text{font-size:13px;line-height:1.85;color:#37474f;}
+.conclusion-box{background:linear-gradient(135deg,#e8eaf6 0%,#e3f2fd 100%);border:1px solid #c5cae9;border-radius:10px;padding:14px 16px;font-size:13px;line-height:1.85;color:#1a1a2e;}
+.issued-at{font-size:10px;color:#90a4ae;text-align:right;margin-top:8px;}
+
+/* ── 토스트 ── */
+.toast{position:fixed;bottom:22px;right:22px;color:#fff;padding:11px 18px;border-radius:9px;font-size:13px;font-weight:500;z-index:999;box-shadow:0 4px 14px rgba(0,0,0,.22);animation:tin .25s ease;}
+@keyframes tin{from{transform:translateY(12px);opacity:0}to{transform:translateY(0);opacity:1}}
+
+/* ── 이력 타임라인 ── */
+.timeline{display:flex;flex-direction:column;gap:6px;}
+.tl-item{display:flex;align-items:center;gap:10px;padding:8px 10px;border:1px solid #e0e4ea;border-radius:8px;}
+.tl-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
+.tl-date{font-size:11px;color:#78909c;width:80px;flex-shrink:0;}
+.tl-type{font-size:10px;font-weight:700;background:#e8eaf6;color:#3949ab;padding:1px 7px;border-radius:10px;flex-shrink:0;}
+.tl-score{font-size:12px;font-weight:700;color:#0f2547;flex:1;}
+.tl-judge{font-size:11px;}
+
+/* ── 모달 ── */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px;}
+.modal{background:#fff;border-radius:14px;padding:26px;max-width:500px;width:100%;box-shadow:0 8px 32px rgba(0,0,0,.2);}
+.modal h2{font-family:'DM Serif Display',serif;font-size:18px;color:#0f2547;margin-bottom:6px;}
+.modal p{font-size:12px;color:#546e7a;margin-bottom:16px;line-height:1.6;}
+.modal-btns{display:flex;gap:8px;justify-content:flex-end;margin-top:16px;}
+.step-box{background:#f8f9ff;border:1px solid #c5cae9;border-radius:8px;padding:12px;margin-bottom:14px;font-size:12px;color:#37474f;line-height:1.8;}
+.step-box b{color:#0f2547;}
+
+/* ── 인쇄 ── */
+@media print{
+  .topbar,.analyze-bar,.card:not(.result-only),.modal-bg,button{display:none!important;}
+  body{background:#fff;}
+  .block,.grade-hero{box-shadow:none;border:1px solid #ddd;}
+}
+
+/* ── 반응형 ── */
+@media(max-width:640px){
+  .metric-grid{grid-template-columns:repeat(2,1fr);}
+  .grade-hero{grid-template-columns:auto 1fr;}
+  .grade-hero-right{grid-column:1/-1;text-align:left;display:flex;gap:12px;align-items:center;}
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="logo">SK스토아 QA</div>
+  <span class="logo-sub">협력사 종합 등급 평가</span>
+  <div class="tb-btns">
+    <a class="tb-btn" href="qachecklist_3.html">📋 체크리스트</a>
+    <button class="tb-btn" onclick="openCfgModal()">⚙️ 설정</button>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <!-- ① 설정 상태 표시 -->
+  <div class="card" id="cfg-status-card">
+    <div class="card-title">⚙️ 연동 설정 <span class="ct-badge">자동 감지</span></div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+      <span id="jsonbin-status" class="status-chip chip-warn">⚠️ JSONBin 미설정</span>
+      <span id="claude-status" class="status-chip chip-warn">⚠️ Claude API 키 미입력</span>
+      <button class="btn btn-ol" style="font-size:12px;padding:5px 12px;" onclick="openCfgModal()">설정 변경</button>
+    </div>
+  </div>
+
+  <!-- ② 제조사 평가 이력 로드 -->
+  <div class="card">
+    <div class="card-title">🏭 제조사 평가 이력 로드
+      <span class="ct-badge">JSONBin · 체크리스트 동일 저장소</span>
+      <span class="ct-badge" style="background:#e3f2fd;color:#1565c0;">선택 사항 — 패션 카테고리는 해당 없음</span>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px;flex-wrap:wrap;">
+      <button class="btn btn-dark" onclick="loadRecords()">🔄 이력 불러오기</button>
+      <span id="load-status" style="font-size:11px;color:#78909c;">버튼을 눌러 평가 이력을 불러오세요</span>
+    </div>
+    <!-- 카테고리 필터 -->
+    <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;" id="cat-filter-row" style="display:none;">
+      <button class="btn-sm btn-blue-sm cat-filter active" data-cat="all" onclick="setCatFilter('all',this)">전체</button>
+      <button class="btn-sm btn-blue-sm cat-filter" data-cat="cgmp" onclick="setCatFilter('cgmp',this)">💄 화장품 (CGMP)</button>
+      <button class="btn-sm btn-blue-sm cat-filter" data-cat="haccp_g" onclick="setCatFilter('haccp_g',this)">🍱 식품 제조·가공업</button>
+      <button class="btn-sm btn-blue-sm cat-filter" data-cat="haccp_s" onclick="setCatFilter('haccp_s',this)">🥘 농·축·수산물</button>
+    </div>
+    <div id="mfr-list-area">
+      <div class="mfr-empty">📭 아직 불러온 이력이 없습니다.</div>
+    </div>
+  </div>
+
+  <!-- ③ 품질 인사이트 리포트 업로드 -->
+  <div class="card">
+    <div class="card-title">📊 품질 인사이트 리포트 업로드
+      <span class="ct-badge" style="background:#fff3e0;color:#e65100;">PDF · 필수</span>
+    </div>
+    <div class="upload-box" id="pdf-upload-box">
+      <input type="file" accept=".pdf" id="pdf-input" onchange="handlePDF(this)"/>
+      <div class="upload-icon">📄</div>
+      <div class="upload-label">품질 인사이트 리포트 PDF</div>
+      <div class="upload-sub">SK스토아 품질불만율 리포트 PDF를 선택하세요 (필수)</div>
+      <div class="upload-filename" id="pdf-name"></div>
+    </div>
+  </div>
+
+  <!-- ④ 분석 실행 -->
+  <div class="analyze-bar">
+    <button class="btn btn-gold btn-analyze" id="btn-analyze" onclick="runAnalysis()" disabled>
+      🔍 종합 등급 평가 시작
+    </button>
+    <div class="analyze-hint" id="analyze-hint">품질 인사이트 리포트 PDF를 업로드하면 분석 버튼이 활성화됩니다.</div>
+    <button class="btn btn-ol" style="font-size:12px;padding:6px 12px;" onclick="window.print()">🖨️ 인쇄</button>
+  </div>
+
+  <!-- ⑤ 로딩 -->
+  <div class="loading-card" id="loading-card" style="display:none;">
+    <div class="spinner"></div>
+    <div style="font-size:13px;color:#0f2547;font-weight:600;">AI 종합 분석 중...</div>
+    <div class="loading-steps">
+      <div class="lstep" id="ls1">📋 평가 이력 데이터 정제 중</div>
+      <div class="lstep" id="ls2">📊 품질 불만 데이터 파악 중</div>
+      <div class="lstep" id="ls3">🔗 제조 이슈 × 불만 교차 분석 중</div>
+      <div class="lstep" id="ls4">🏆 협력사 종합 등급 산정 중</div>
+      <div class="lstep" id="ls5">📝 개선 조치 요구사항 작성 중</div>
+    </div>
+  </div>
+
+  <!-- ⑥ 결과 -->
+  <div class="result-wrap" id="result-wrap"></div>
+
+</div><!-- /wrap -->
+
+<!-- 설정 모달 -->
+<div class="modal-bg" id="cfg-modal" style="display:none;" onclick="if(event.target===this)closeCfgModal()">
+  <div class="modal">
+    <h2>⚙️ 연동 설정</h2>
+    <p>체크리스트와 동일한 JSONBin 정보를 사용합니다. Claude API 키는 브라우저에만 저장됩니다.</p>
+    <div class="step-box">
+      <b>JSONBin</b> 설정은 체크리스트(qachecklist_3.html)와 공유됩니다.<br>
+      한 곳에서 설정하면 양쪽 모두 동작합니다.<br><br>
+      <b>Claude API Key</b>는 <a href="https://console.anthropic.com/settings/keys" target="_blank">console.anthropic.com</a>에서 발급받으세요.
+    </div>
+    <div class="ff" style="margin-bottom:10px;">
+      <label>JSONBin Master Key</label>
+      <input id="inp-jsonbin-key" type="password" placeholder="$2a$10$..."/>
+    </div>
+    <div class="ff" style="margin-bottom:10px;">
+      <label>JSONBin Bin ID</label>
+      <input id="inp-jsonbin-bin" placeholder="6849a1f1..."/>
+    </div>
+    <div class="ff" style="margin-bottom:10px;">
+      <label>Claude API Key</label>
+      <input id="inp-claude-key" type="password" placeholder="sk-ant-api03-..."/>
+    </div>
+    <div class="modal-btns">
+      <button class="btn btn-ol" onclick="closeCfgModal()">취소</button>
+      <button class="btn btn-dark" onclick="testJsonbin()">JSONBin 테스트</button>
+      <button class="btn btn-gold" onclick="saveCfgModal()">저장</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast-el" class="toast" style="display:none;"></div>
+
+<script>
+/* ════════════════════════════════════════
+   상수 / 설정
+════════════════════════════════════════ */
+const CFG_KEY = "qa_jsonbin_cfg";
+const CLAUDE_KEY = "qa_claude_api_key";
+const DEFAULT_CFG = {masterKey:"$2a$10$nRgkgOlPM8u47NNvK1.g7O4XWI377TT.gRNNSh1LEnK.ChqmzZS4q", binId:"69dc4fd236566621a8a84940"};
+
+const TYPE_LABELS = {cgmp:"💄 화장품 (CGMP)", haccp_g:"🍱 식품 제조·가공업", haccp_s:"🥘 농·축·수산물 취급업소"};
+const TYPE_ICONS  = {cgmp:"💄", haccp_g:"🍱", haccp_s:"🥘"};
+const CAT_NAMES   = {cgmp:"화장품", haccp_g:"식품 제조·가공업", haccp_s:"농·축·수산물 취급업소"};
+
+/* ════════════════════════════════════════
+   앱 상태
+════════════════════════════════════════ */
+let S = {
+  allRecords: [],
+  filteredManufacturers: [],
+  catFilter: "all",
+  selectedMfr: null,       /* 선택된 업소명 */
+  selectedRecIds: [],      /* 선택된 평가 회차 ID 목록 */
+  pdfBase64: null,
+  pdfName: null,
+  result: null,
+};
+
+/* ════════════════════════════════════════
+   설정 로드
+════════════════════════════════════════ */
+function loadCfg() {
+  let cfg = Object.assign({}, DEFAULT_CFG);
+  try {
+    const s = localStorage.getItem(CFG_KEY);
+    if (s) {
+      const p = JSON.parse(s);
+      cfg.masterKey = p.masterKey || DEFAULT_CFG.masterKey;
+      cfg.binId = p.binId || DEFAULT_CFG.binId;
+    }
+  } catch(_) {}
+  return cfg;
+}
+function getClaudeKey() {
+  return localStorage.getItem(CLAUDE_KEY) || "";
+}
+function updateStatusChips() {
+  const cfg = loadCfg();
+  const ck = getClaudeKey();
+  const jbOk = cfg.masterKey && cfg.binId;
+  document.getElementById("jsonbin-status").className = "status-chip " + (jbOk ? "chip-ok" : "chip-warn");
+  document.getElementById("jsonbin-status").textContent = jbOk ? "✅ JSONBin 연결됨" : "⚠️ JSONBin 미설정";
+  document.getElementById("claude-status").className = "status-chip " + (ck ? "chip-ok" : "chip-warn");
+  document.getElementById("claude-status").textContent = ck ? "✅ Claude API 키 입력됨" : "⚠️ Claude API 키 미입력";
+}
+
+/* ════════════════════════════════════════
+   JSONBin
+════════════════════════════════════════ */
+async function cloudLoad() {
+  const cfg = loadCfg();
+  if (!cfg.masterKey || !cfg.binId) return null;
+  try {
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), 8000);
+    let r;
+    try {
+      r = await fetch("https://api.jsonbin.io/v3/b/" + cfg.binId + "/latest", {
+        headers: {"X-Master-Key": cfg.masterKey},
+        signal: ctrl.signal
+      });
+    } finally { clearTimeout(t); }
+    if (!r.ok) return null;
+    const d = await r.json();
+    const raw = d?.record;
+    if (!raw) return [];
+    if (Array.isArray(raw)) return raw;
+    if (raw && typeof raw === "object") {
+      if (Array.isArray(raw.records)) return raw.records;
+      const vals = Object.values(raw);
+      if (vals.length > 0 && vals.every(v => v && typeof v === "object" && v.id)) return vals;
+    }
+    return [];
+  } catch (_) { return null; }
+}
+
+/* ════════════════════════════════════════
+   이력 로드 & 제조사 그룹핑
+════════════════════════════════════════ */
+async function loadRecords() {
+  setLoadStatus("⏳ 불러오는 중...");
+  const recs = await cloudLoad();
+  if (recs === null) {
+    setLoadStatus("⚠️ JSONBin 연결 실패. 설정을 확인해주세요.");
+    showToast("⚠️ JSONBin 연결 실패", false);
+    return;
+  }
+  /* 식품(haccp_g, haccp_s) + 뷰티(cgmp) 카테고리만 필터 */
+  const valid = recs.filter(r => r.clType && ["cgmp","haccp_g","haccp_s"].includes(r.clType));
+  S.allRecords = valid;
+  setLoadStatus(`✅ 총 ${valid.length}건 로드됨 — 업소명 기준으로 그룹핑`);
+  document.getElementById("cat-filter-row").style.display = "flex";
+  renderMfrList();
+  updateAnalyzeBtn();
+}
+
+function setLoadStatus(msg) {
+  document.getElementById("load-status").textContent = msg;
+}
+
+function groupByMfr(records) {
+  const map = {};
+  records.forEach(rec => {
+    const key = rec.header?.업소명 || "(업소명 없음)";
+    if (!map[key]) map[key] = {name: key, records: []};
+    map[key].records.push(rec);
+  });
+  /* 각 그룹을 심사일자 내림차순 정렬 */
+  Object.values(map).forEach(g => {
+    g.records.sort((a, b) => (b.header?.심사일자||"") > (a.header?.심사일자||"") ? 1 : -1);
+  });
+  return Object.values(map).sort((a, b) => b.records.length - a.records.length);
+}
+
+function setCatFilter(cat, el) {
+  S.catFilter = cat;
+  document.querySelectorAll(".cat-filter").forEach(e => e.classList.remove("active"));
+  el.classList.add("active");
+  S.selectedMfr = null;
+  S.selectedRecIds = [];
+  renderMfrList();
+  updateAnalyzeBtn();
+}
+
+function renderMfrList() {
+  const filtered = S.catFilter === "all"
+    ? S.allRecords
+    : S.allRecords.filter(r => r.clType === S.catFilter);
+  const groups = groupByMfr(filtered);
+
+  const area = document.getElementById("mfr-list-area");
+  if (groups.length === 0) {
+    area.innerHTML = `<div class="mfr-empty">해당 카테고리의 평가 이력이 없습니다.</div>`;
+    return;
+  }
+
+  const html = `<div class="mfr-list">${groups.map(g => {
+    const latestRec = g.records[0];
+    const cats = [...new Set(g.records.map(r => TYPE_ICONS[r.clType] || ""))].join(" ");
+    const isSelected = S.selectedMfr === g.name;
+    const grades = g.records.map(r => {
+      const gr = calcGrade(r.earned, r.total, r.clType);
+      return `<div class="grade-chip g${gr.toLowerCase()}">${gr}</div>`;
+    }).slice(0, 4).join("");
+    const latestDate = latestRec.header?.심사일자 || "-";
+    const latestEarned = latestRec.earned || 0;
+    const latestTotal = latestRec.total || 0;
+    const latestPct = latestTotal ? ((latestEarned / latestTotal) * 100).toFixed(1) : "0.0";
+
+    return `<div class="mfr-card ${isSelected ? "selected" : ""}" data-mfr-name="${esc(g.name)}">
+      <div class="mfr-icon">${cats}</div>
+      <div class="mfr-info">
+        <div class="mfr-name">${esc(g.name)}</div>
+        <div class="mfr-meta">최근 심사: ${latestDate} · ${g.records.length}회 평가 · 최근 ${latestEarned}/${latestTotal}점 (${latestPct}%)</div>
+        ${isSelected ? renderHistoryRow(g.records) : ""}
+      </div>
+      <div class="mfr-grades">${grades}</div>
+    </div>`;
+  }).join("")}</div>`;
+  area.innerHTML = html;
+  /* 이벤트 등록 — innerHTML 교체 후 매번 재등록 */
+  area.querySelectorAll(".mfr-card").forEach(card => {
+    card.addEventListener("click", () => selectMfr(card.dataset.mfrName));
+  });
+  area.querySelectorAll(".hist-chip").forEach(chip => {
+    chip.addEventListener("click", e => { e.stopPropagation(); toggleRec(chip.dataset.recId); });
+  });
+}
+
+function renderHistoryRow(records) {
+  const chips = records.map(rec => {
+    const gr = calcGrade(rec.earned, rec.total, rec.clType);
+    const isSelected = S.selectedRecIds.includes(rec.id);
+    const label = `${rec.header?.심사일자 || "?"} ${TYPE_ICONS[rec.clType]||""} ${gr}등급`;
+    return `<span class="hist-chip ${isSelected ? "selected" : ""}" data-rec-id="${esc(String(rec.id))}">${label}</span>`;
+  }).join("");
+  const row = `<div class="history-row" style="margin-top:8px;">${chips}
+    <span style="font-size:10px;color:#90a4ae;padding:3px 0;">← 분석에 포함할 회차 선택 (미선택 시 전체 포함)</span>
+  </div>`;
+  /* hist-chip 클릭 이벤트는 renderMfrList의 이벤트 위임 이후 별도 등록 필요 없음
+     — area.querySelectorAll 이후 hist-chip 등록은 renderMfrList에서 처리 */
+  return row;
+}
+
+function selectMfr(name) {
+  if (S.selectedMfr === name) {
+    S.selectedMfr = null;
+    S.selectedRecIds = [];
+  } else {
+    S.selectedMfr = name;
+    S.selectedRecIds = []; /* 기본: 전체 포함 */
+  }
+  renderMfrList();
+  updateAnalyzeBtn();
+}
+
+function toggleRec(id) {
+  const idx = S.selectedRecIds.indexOf(id);
+  if (idx === -1) S.selectedRecIds.push(id);
+  else S.selectedRecIds.splice(idx, 1);
+  renderMfrList();
+}
+
+/* ════════════════════════════════════════
+   PDF 업로드
+════════════════════════════════════════ */
+function handlePDF(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    S.pdfBase64 = e.target.result.split(",")[1];
+    S.pdfName = file.name;
+    document.getElementById("pdf-name").textContent = "✅ " + file.name;
+    document.getElementById("pdf-upload-box").classList.add("has-file");
+    showToast("📄 PDF 업로드 완료", true);
+    updateAnalyzeBtn();
+  };
+  reader.readAsDataURL(file);
+}
+
+/* ════════════════════════════════════════
+   분석 버튼 활성화
+════════════════════════════════════════ */
+function updateAnalyzeBtn() {
+  const hasPdf = !!S.pdfBase64;
+  document.getElementById("btn-analyze").disabled = !hasPdf;
+  if (!hasPdf) {
+    document.getElementById("analyze-hint").textContent = "품질 인사이트 리포트 PDF를 업로드하면 분석 버튼이 활성화됩니다.";
+  } else if (S.selectedMfr) {
+    document.getElementById("analyze-hint").textContent = `"${S.selectedMfr}" 제조사 평가 이력 + PDF 종합 분석 준비 완료.`;
+  } else {
+    document.getElementById("analyze-hint").textContent = "PDF 기반 분석 준비 완료. (패션 카테고리 — 제조사 평가 이력 없이 분석)";
+  }
+}
+
+/* ════════════════════════════════════════
+   점수 유틸
+════════════════════════════════════════ */
+function calcGrade(earned, total, type) {
+  if (!total) return "-";
+  if (type === "cgmp") {
+    if (earned >= 90) return "S"; if (earned >= 80) return "A";
+    if (earned >= 71) return "B"; if (earned >= 61) return "C"; return "D";
+  }
+  if (type === "haccp_g") {
+    if (earned >= 104) return "S"; if (earned >= 92) return "A";
+    if (earned >= 81) return "B"; if (earned >= 69) return "C"; return "D";
+  }
+  if (type === "haccp_s") {
+    const thr = total <= 30
+      ? [27,24,21,18] : [30,26,23,20];
+    if (earned >= thr[0]) return "S"; if (earned >= thr[1]) return "A";
+    if (earned >= thr[2]) return "B"; if (earned >= thr[3]) return "C"; return "D";
+  }
+  const p = (earned / total) * 100;
+  if (p >= 90) return "A"; if (p >= 80) return "B"; if (p >= 70) return "C"; return "D";
+}
+
+function judgeStr(earned, total, type) {
+  if (!total) return "-";
+  if (type === "haccp_s") return "-"; /* haccp_s는 적합여부 미사용 */
+  if (type === "cgmp") {
+    if (earned >= 90) return "적합";
+    if (earned >= 61) return "조건부 적합";
+    return "부적합";
+  }
+  if (type === "haccp_g") {
+    if (earned >= 104) return "적합";
+    if (earned >= 69) return "조건부 적합";
+    return "부적합";
+  }
+  const p = (earned / total) * 100;
+  if (p >= 90) return "적합";
+  if (p >= 70) return "조건부 적합";
+  return "부적합";
+}
+
+function pctStr(e, t) { return t ? ((e / t) * 100).toFixed(1) : "0.0"; }
+
+/* ════════════════════════════════════════
+   평가 이력 → AI용 텍스트 변환
+════════════════════════════════════════ */
+function formatRecordsForAI(records) {
+  let text = `[SK스토아 제조사 현장 평가 이력 — AI 분석용]\n총 ${records.length}회 평가\n\n`;
+  records.forEach((rec, i) => {
+    const typeName = CAT_NAMES[rec.clType] || rec.clType;
+    const gr = calcGrade(rec.earned, rec.total, rec.clType);
+    const jd = rec.header?.적합여부 || judgeStr(rec.earned, rec.total, rec.clType);
+    text += `━━━ 평가 ${i+1}회차 ━━━\n`;
+    text += `업소명: ${rec.header?.업소명 || "-"}\n`;
+    text += `평가유형: ${typeName} (${rec.header?.평가유형서브 || ""})\n`;
+    text += `심사일자: ${rec.header?.심사일자 || "-"} / 심사자: ${rec.header?.심사자 || "-"}\n`;
+    text += `총점: ${rec.earned}/${rec.total}점 (${pctStr(rec.earned, rec.total)}%) / 등급: ${gr} / 적합여부: ${jd}\n`;
+
+    /* 감점 항목 (점수 < 배점 이고 비고 있는 항목) */
+    const issues = [];
+    if (rec.J) {
+      Object.keys(rec.J).forEach(k => {
+        if (k.endsWith("_note") || k.endsWith("_bp") || k === "기타_텍스트") return;
+        const v = rec.J[k];
+        const bpKey = k + "_bp";
+        const bp = rec.J[bpKey] !== undefined ? Number(rec.J[bpKey]) : null;
+        const note = rec.J[k + "_note"] || "";
+        if (v !== undefined && v !== "" && v !== "N/A" && bp !== null && Number(v) < bp && note) {
+          issues.push(`  · 항목ID(${k}): ${v}/${bp}점 → ${note}`);
+        }
+      });
+    }
+    if (issues.length > 0) {
+      text += `감점/부적합 항목 (${issues.length}건):\n` + issues.join("\n") + "\n";
+    } else {
+      text += `감점 항목: 없음 (또는 비고 미기재)\n`;
+    }
+    if (rec.J?.["기타_텍스트"]) {
+      text += `기타 사항: ${rec.J["기타_텍스트"]}\n`;
+    }
+    text += "\n";
+  });
+  return text;
+}
+
+/* ════════════════════════════════════════
+   Claude API 호출
+════════════════════════════════════════ */
+async function callClaude(evalText, pdfBase64) {
+  const apiKey = getClaudeKey();
+  if (!apiKey) throw new Error("Claude API 키가 설정되지 않았습니다. ⚙️ 설정에서 입력해주세요.");
+
+  const typeName = S.selectedMfr || "(패션 카테고리 협력사)";
+  const firstRec = getSelectedRecords()[0];
+  const hasMfrEval = !!firstRec;
+  const catLabel = firstRec ? CAT_NAMES[firstRec.clType] : "패션";
+
+  const prompt = `당신은 SK스토아 품질관리팀의 수석 QA 분석가입니다.
+아래 자료를 종합 분석하여 협력사에 대한 종합 등급 평가서 및 개선 조치 요구서를 작성해주세요.
+
+카테고리: ${catLabel}${!hasMfrEval ? " — 패션 카테고리는 제조사 현장 평가를 별도 진행하지 않으므로, 품질 인사이트 리포트(PDF)만으로 종합 평가합니다." : ""}
+
+[평가 기준 참고]
+- 화장품 (CGMP): 만점 96점 / S≥90점, A≥80점, B≥71점, C≥61점, D<61점 / 적합≥90점, 조건부 적합≥61점, 부적합<61점
+- 식품 제조·가공업 (HACCP_G): 만점 115점 / S≥104점, A≥92점, B≥81점, C≥69점, D<69점 / 적합≥104점, 조건부 적합≥69점, 부적합<69점
+- 농·축·수산물 취급업소 (HACCP_S): 만점 33점 (용수관리 N/A 시 30점) / 만점33: S≥30, A≥26, B≥23, C≥20 / 만점30: S≥27, A≥24, B≥21, C≥18 / 적합여부 판정 미사용
+
+[자료 1: 제조사 현장 평가 이력 (구조화 데이터)]
+${hasMfrEval ? evalText : "해당 없음 — 패션 카테고리는 제조사 현장 평가 미실시"}
+
+[자료 2: 품질 인사이트 리포트 (첨부 PDF 문서 참조)]
+
+다음 JSON 형식으로만 응답하세요 (순수 JSON, 마크다운 없이):
+{
+  "partnerGrade": {
+    "overall": "S/A/B/C/D 중 하나",
+    "overallScore": 숫자(0~100),
+    "complianceStatus": "적합 또는 조건부 적합 또는 부적합",
+    "manufacturerEvalGrade": "S/A/B/C/D 또는 N/A(패션 카테고리 등 평가 미실시 시)",
+    "manufacturerEvalSummary": "평가 점수 및 근거 요약 (1문장). 평가 미실시 시 '패션 카테고리로 제조사 현장 평가 미실시' 기재",
+    "qualityComplaintGrade": "S/A/B/C/D",
+    "complaintRate": "품질불만율 또는 N/A",
+    "trend": "improving 또는 stable 또는 declining 또는 single",
+    "trendLabel": "개선 중 또는 유지 또는 하락 또는 단회 평가",
+    "riskLevel": "high 또는 medium 또는 low",
+    "riskLabel": "고위험 또는 중위험 또는 저위험",
+    "riskReason": "위험도 판단 근거 (1~2문장)"
+  },
+  "evaluationSummary": {
+    "manufacturer": "업소명 또는 협력사명(PDF 기반)",
+    "category": "카테고리명",
+    "evaluationCount": 회차수(패션은 0),
+    "latestDate": "가장 최근 심사일 또는 N/A",
+    "product": "주요 상품명 (품질리포트 기반, 없으면 '-')",
+    "partner": "협력사명 (품질리포트 기반, 없으면 '-')"
+  },
+  "manufacturerKeyIssues": [
+    {"section": "섹션명", "item": "항목명", "score": "득점/배점", "severity": "high 또는 medium 또는 low", "finding": "부적합 내용 요약 (2~3줄)"}
+  ],
+  "qualityAnalysis": {
+    "overview": "품질불만 현황 종합 (3~4문장, 리포트 미첨부 시 '품질 인사이트 리포트 미첨부로 분석 불가'로 기재)",
+    "topIssues": [
+      {"rank": 1, "reason": "사유", "count": "건수", "rate": "비율", "implication": "시사점"}
+    ]
+  },
+  "actionItems": [
+    {
+      "priority": 1,
+      "priorityLabel": "즉시 조치 (1개월 이내)",
+      "category": "카테고리",
+      "issue": "핵심 문제",
+      "action": "구체적 조치 요구사항 (2~3문장)",
+      "deadline": "조치 기한",
+      "responsible": "담당 부서/책임자",
+      "basis": "근거 (항목명 또는 반품 사유)"
+    }
+  ],
+  "crossAnalysis": "제조사 현장 평가 결과와 품질불만 데이터 간 연관성 분석 (3~5문장). 리포트 미첨부 시 평가 이력 내 패턴 분석으로 대체.",
+  "conclusion": "전반적 개선 방향, 재평가 조건, 협력 관계 유지 조건에 대한 결론 (3~4문장)."
+}`;
+
+  const userContent = [];
+  if (pdfBase64) {
+    userContent.push({type: "document", source: {type: "base64", media_type: "application/pdf", data: pdfBase64}});
+  }
+  userContent.push({type: "text", text: prompt});
+
+  const body = {
+    model: "claude-sonnet-4-6",
+    max_tokens: 8000,
+    system: "당신은 SK스토아 품질관리팀 수석 QA 분석가입니다. 식품(HACCP)과 뷰티(CGMP) 카테고리 제조사 평가 전문가입니다. 항상 순수 JSON만 반환합니다.",
+    messages: [{role: "user", content: userContent}]
+  };
+
+  const reqHeaders = {
+    "Content-Type": "application/json",
+    "x-api-key": apiKey,
+    "anthropic-version": "2023-06-01",
+  };
+  if (pdfBase64) reqHeaders["anthropic-beta"] = "pdfs-2024-09-25";
+
+
+  const res = await fetch("https://holy-cherry-4af3.skminkyu.workers.dev/", {
+    method: "POST",
+    headers: reqHeaders,
+    body: JSON.stringify(body)
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(`Claude API 오류 (${res.status}): ${err?.error?.message || res.statusText}`);
+  }
+
+  const data = await res.json();
+  // Check for API-level truncation
+  const stopReason = data.stop_reason;
+  const raw = data.content?.[0]?.text || "";
+  if (!raw) {
+    throw new Error("Claude 응답이 비어있습니다. API 응답: " + JSON.stringify(data).slice(0, 200));
+  }
+  // Strip markdown code fences and extract the JSON object
+  const stripped = raw.replace(/```json\s*/g, "").replace(/```/g, "").trim();
+  const start = stripped.indexOf("{");
+  const end = stripped.lastIndexOf("}");
+  if (start === -1 || end === -1) {
+    throw new Error("JSON을 찾을 수 없습니다(stop_reason=" + stopReason + "). 원문: " + raw.slice(0, 400));
+  }
+  try {
+    return JSON.parse(stripped.slice(start, end + 1));
+  } catch (e) {
+    if (stopReason === "max_tokens") {
+      throw new Error("응답이 너무 길어 잘렸습니다(max_tokens 초과). 다시 시도해주세요.");
+    }
+    throw new Error("응답 파싱 오류(stop_reason=" + stopReason + "): " + e.message + " / 원문: " + raw.slice(0, 400));
+  }
+}
+
+/* ════════════════════════════════════════
+   분석 실행
+════════════════════════════════════════ */
+function getSelectedRecords() {
+  const group = S.allRecords.filter(r => (r.header?.업소명 || "(업소명 없음)") === S.selectedMfr);
+  if (S.selectedRecIds.length === 0) return group; /* 전체 */
+  return group.filter(r => S.selectedRecIds.includes(String(r.id)));
+}
+
+async function runAnalysis() {
+  if (!S.pdfBase64) { showToast("품질 인사이트 리포트 PDF를 먼저 업로드해주세요.", false); return; }
+  const records = S.selectedMfr ? getSelectedRecords() : [];
+
+  document.getElementById("btn-analyze").disabled = true;
+  document.getElementById("loading-card").style.display = "block";
+  document.getElementById("result-wrap").style.display = "none";
+
+  /* 로딩 스텝 순차 표시 */
+  const steps = [1,2,3,4,5];
+  const delays = [0, 1200, 2800, 4500, 6000];
+  steps.forEach((n, i) => {
+    setTimeout(() => {
+      steps.forEach(m => {
+        const el = document.getElementById("ls" + m);
+        if (m < n) { el.className = "lstep done"; }
+        else if (m === n) { el.className = "lstep active"; }
+        else { el.className = "lstep"; }
+      });
+    }, delays[i]);
+  });
+
+  try {
+    const evalText = records.length > 0 ? formatRecordsForAI(records) : "";
+    const parsed = await callClaude(evalText, S.pdfBase64);
+    S.result = parsed;
+    document.getElementById("loading-card").style.display = "none";
+    renderResult(parsed, records);
+  } catch (err) {
+    document.getElementById("loading-card").style.display = "none";
+    document.getElementById("result-wrap").style.display = "block";
+    document.getElementById("result-wrap").innerHTML =
+      `<div class="block"><p style="color:#c62828;font-size:13px;">⚠️ 오류가 발생했습니다: ${esc(err.message)}</p></div>`;
+  }
+  document.getElementById("btn-analyze").disabled = false;
+}
+
+/* ════════════════════════════════════════
+   결과 렌더
+════════════════════════════════════════ */
+function riskPillClass(level) {
+  if (level === "high") return "gpill-bad";
+  if (level === "medium") return "gpill-warn";
+  return "gpill-ok";
+}
+function trendPillClass(trend) {
+  if (trend === "improving") return "gpill-ok";
+  if (trend === "declining") return "gpill-bad";
+  return "gpill-info";
+}
+function actionPClass(p) {
+  if (p === 1) return "p1"; if (p === 2) return "p2"; return "p3";
+}
+function gradeCls(g) {
+  const m = {"S":"gs","A":"ga","B":"gb","C":"gc","D":"gd"};
+  return m[g] || "";
+}
+function judgeColor(j) {
+  if (j === "적합") return "color:#2e7d32;";
+  if (j === "부적합") return "color:#c62828;";
+  return "color:#f57f17;";
+}
+
+function renderResult(d, records) {
+  const pg = d.partnerGrade || {};
+  const es = d.evaluationSummary || {};
+  const mfIssues = d.manufacturerKeyIssues || [];
+  const qa = d.qualityAnalysis || {};
+  const actions = d.actionItems || [];
+  const today = new Date().toLocaleDateString("ko-KR");
+
+  const overallGr = pg.overall || "-";
+  const overallGrCls = gradeCls(overallGr);
+
+  /* 이력 타임라인 */
+  const timelineHtml = records.map(rec => {
+    const gr = calcGrade(rec.earned, rec.total, rec.clType);
+    const jd = rec.header?.적합여부 || judgeStr(rec.earned, rec.total, rec.clType);
+    const dotColor = gr === "S" ? "#7B1FA2" : gr === "A" ? "#1565c0" : gr === "B" ? "#2e7d32" : gr === "C" ? "#f57f17" : "#c62828";
+    return `<div class="tl-item">
+      <div class="tl-dot" style="background:${dotColor};"></div>
+      <div class="tl-date">${rec.header?.심사일자 || "-"}</div>
+      <div class="tl-type">${TYPE_ICONS[rec.clType] || ""} ${CAT_NAMES[rec.clType] || ""}</div>
+      <div class="tl-score">${rec.earned}/${rec.total}점 (${pctStr(rec.earned,rec.total)}%) · <strong class="grade-chip g${gr.toLowerCase()}" style="display:inline-flex;width:22px;height:22px;font-size:11px;">${gr}</strong></div>
+      <div class="tl-judge" style="${judgeColor(jd)};font-size:11px;font-weight:600;">${jd}</div>
+    </div>`;
+  }).join("");
+
+  const html = `
+  <!-- 종합 등급 카드 -->
+  <div class="grade-hero">
+    <div class="grade-hero-left">
+      <div class="grade-hero-label">종합 등급</div>
+      <div class="grade-large ${overallGrCls}">${overallGr}</div>
+      <div style="font-size:11px;opacity:.6;margin-top:2px;">${pg.overallScore !== undefined ? pg.overallScore + "점" : ""}</div>
+    </div>
+    <div class="grade-hero-mid">
+      <div class="grade-hero-name">${esc(es.manufacturer || S.selectedMfr || "-")}</div>
+      <div class="grade-hero-sub">${esc(es.partner || "")}${es.partner && es.product ? " · " : ""}${esc(es.product || "")}${es.category ? " | " + esc(es.category) : ""}</div>
+      <div class="grade-hero-pills">
+        <span class="gpill gpill-info">📋 ${es.evaluationCount || records.length}회 평가</span>
+        <span class="gpill ${trendPillClass(pg.trend)}">📈 ${pg.trendLabel || "-"}</span>
+        <span class="gpill ${riskPillClass(pg.riskLevel)}">${pg.riskLevel === "high" ? "🔴" : pg.riskLevel === "medium" ? "🟡" : "🟢"} ${pg.riskLabel || "-"}</span>
+        <span class="gpill gpill-info">${pg.complianceStatus || "-"}</span>
+      </div>
+    </div>
+    <div class="grade-hero-right">
+      <div class="risk-label">위험도 근거</div>
+      <div class="risk-value" style="font-size:11px;font-weight:400;line-height:1.5;max-width:200px;opacity:.85;">${esc(pg.riskReason || "")}</div>
+    </div>
+  </div>
+
+  <!-- 지표 요약 -->
+  <div class="metric-grid">
+    <div class="metric-card">
+      <div class="metric-label">제조사 평가</div>
+      <div class="metric-value" style="font-size:1rem;">${pg.manufacturerEvalGrade || "-"}등급</div>
+      <div class="metric-sub">${esc(pg.manufacturerEvalSummary || "")}</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">품질불만율</div>
+      <div class="metric-value">${esc(pg.complaintRate || "N/A")}</div>
+      <div class="metric-sub">품질불만 등급: ${pg.qualityComplaintGrade || "N/A"}</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">평가 추이</div>
+      <div class="metric-value" style="font-size:.9rem;">${pg.trendLabel || "-"}</div>
+      <div class="metric-sub">최근 심사: ${es.latestDate || "-"}</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">종합 적합여부</div>
+      <div class="metric-value" style="font-size:.85rem;${judgeColor(pg.complianceStatus)}">${pg.complianceStatus || "-"}</div>
+      <div class="metric-sub">${pg.riskLabel || ""}</div>
+    </div>
+  </div>
+
+  <!-- 평가 이력 타임라인 -->
+  <div class="block">
+    <div class="block-head">📅 평가 이력 타임라인 <span class="cnt">${records.length}회</span></div>
+    <div class="timeline">${timelineHtml}</div>
+  </div>
+
+  <!-- 개선 조치 요구사항 -->
+  <div class="block">
+    <div class="block-head">📌 우선순위별 개선 조치 요구사항 <span class="cnt">${actions.length}건</span></div>
+    <div class="action-list">
+      ${actions.map(a => `
+      <div class="action-item ${actionPClass(a.priority)}">
+        <div class="pnum">${a.priority}</div>
+        <div>
+          <div class="action-cat">${esc(a.category || "")} · ${esc(a.priorityLabel || "")}</div>
+          <div class="action-issue">${esc(a.issue || "")}</div>
+          <div class="action-detail">${esc(a.action || "")}</div>
+          ${a.basis ? `<div class="action-basis">📎 근거: ${esc(a.basis)}</div>` : ""}
+          ${a.responsible ? `<div class="action-basis">👤 담당: ${esc(a.responsible)}</div>` : ""}
+        </div>
+        <div>
+          <div class="deadline-badge">📅 ${esc(a.deadline || "-")}</div>
+        </div>
+      </div>`).join("")}
+    </div>
+  </div>
+
+  <!-- 제조사 현장 평가 부적합 요약 -->
+  ${mfIssues.length > 0 ? `
+  <div class="block">
+    <div class="block-head">🏭 제조사 현장 평가 부적합 요약 <span class="cnt">${mfIssues.length}건</span></div>
+    ${mfIssues.map(i => `
+    <div class="issue-item">
+      <div class="issue-score">${esc(i.score || "")}</div>
+      <div class="issue-body">
+        <div class="issue-section">${esc(i.section || "")} · ${esc(i.item || "")}</div>
+        <div class="issue-text">${esc(i.finding || "")}</div>
+      </div>
+    </div>`).join("")}
+  </div>` : ""}
+
+  <!-- 품질불만 분석 -->
+  <div class="block">
+    <div class="block-head">📊 품질불만 분석</div>
+    <p class="analysis-text" style="margin-bottom:10px;">${esc(qa.overview || "")}</p>
+    ${(qa.topIssues || []).map(t => `
+    <div class="complaint-item">
+      <div class="rank-circle">${t.rank}</div>
+      <div class="complaint-body">
+        <div class="complaint-title">
+          <span class="complaint-reason">${esc(t.reason || "")}</span>
+          <span class="complaint-count-badge">${esc(t.count || "")} / ${esc(t.rate || "")}</span>
+        </div>
+        <div class="complaint-implication">${esc(t.implication || "")}</div>
+      </div>
+    </div>`).join("")}
+  </div>
+
+  <!-- 교차 분석 -->
+  <div class="block">
+    <div class="block-head">🔗 교차 분석 — 제조 이슈 × 품질불만 연관성</div>
+    <p class="analysis-text">${esc(d.crossAnalysis || "")}</p>
+  </div>
+
+  <!-- 종합 결론 -->
+  <div class="block">
+    <div class="block-head">📋 종합 결론 및 재평가 조건</div>
+    <div class="conclusion-box">${esc(d.conclusion || "")}</div>
+    <p class="issued-at">발행일: ${today} · SK스토아 품질관리팀 · 대상: ${esc(es.manufacturer || S.selectedMfr || "-")}</p>
+  </div>
+  `;
+
+  const wrap = document.getElementById("result-wrap");
+  wrap.style.display = "block";
+  wrap.innerHTML = html;
+}
+
+/* ════════════════════════════════════════
+   설정 모달
+════════════════════════════════════════ */
+function openCfgModal() {
+  const cfg = loadCfg();
+  const ck = getClaudeKey();
+  document.getElementById("inp-jsonbin-key").value = cfg.masterKey || "";
+  document.getElementById("inp-jsonbin-bin").value = cfg.binId || "";
+  document.getElementById("inp-claude-key").value = ck || "";
+  document.getElementById("cfg-modal").style.display = "flex";
+}
+function closeCfgModal() {
+  document.getElementById("cfg-modal").style.display = "none";
+}
+function saveCfgModal() {
+  const key = document.getElementById("inp-jsonbin-key").value.trim();
+  const bin = document.getElementById("inp-jsonbin-bin").value.trim();
+  const ck  = document.getElementById("inp-claude-key").value.trim();
+  if (key && bin) {
+    localStorage.setItem(CFG_KEY, JSON.stringify({masterKey: key, binId: bin}));
+  }
+  if (ck) localStorage.setItem(CLAUDE_KEY, ck);
+  else localStorage.removeItem(CLAUDE_KEY);
+  closeCfgModal();
+  updateStatusChips();
+  showToast("✅ 설정이 저장되었습니다.");
+}
+async function testJsonbin() {
+  const key = document.getElementById("inp-jsonbin-key").value.trim();
+  const bin = document.getElementById("inp-jsonbin-bin").value.trim();
+  if (!key || !bin) { showToast("⚠️ Master Key와 Bin ID를 입력해주세요.", false); return; }
+  try {
+    const r = await fetch(`https://api.jsonbin.io/v3/b/${bin}/latest`, {headers: {"X-Master-Key": key}});
+    if (r.ok) showToast("✅ JSONBin 연결 성공!");
+    else showToast(`⚠️ 연결 실패 (${r.status}). Key와 Bin ID를 확인해주세요.`, false);
+  } catch (_) { showToast("⚠️ 연결 실패. 인터넷 연결을 확인해주세요.", false); }
+}
+
+/* ════════════════════════════════════════
+   토스트
+════════════════════════════════════════ */
+let _toastT = null;
+function showToast(msg, ok = true) {
+  const el = document.getElementById("toast-el");
+  if (!el) return;
+  el.textContent = msg;
+  el.style.background = ok ? "#1b5e20" : "#b71c1c";
+  el.style.display = "block";
+  if (_toastT) clearTimeout(_toastT);
+  _toastT = setTimeout(() => el.style.display = "none", 3200);
+}
+
+/* ════════════════════════════════════════
+   XSS 방어
+════════════════════════════════════════ */
+function esc(s) {
+  if (s === undefined || s === null) return "";
+  return String(s)
+    .replace(/&/g,"&amp;").replace(/</g,"&lt;")
+    .replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+
+/* ════════════════════════════════════════
+   초기화
+════════════════════════════════════════ */
+updateStatusChips();
+</script>
+</body>
+</html>
