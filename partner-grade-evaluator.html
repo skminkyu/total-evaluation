@@ -828,7 +828,7 @@ function getSelectedRecords() {
 }
 
 async function runAnalysis() {
-  if (!S.pdfBase64) { showToast("품질 인사이트 리포트 PDF를 먼저 업로드해주세요.", false); return; }
+  if (!S.pdfText) { showToast("품질 인사이트 리포트 PDF를 먼저 업로드해주세요.", false); return; }
   const records = S.selectedMfr ? getSelectedRecords() : [];
 
   document.getElementById("btn-analyze").disabled = true;
