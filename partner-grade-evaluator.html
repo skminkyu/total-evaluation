@@ -542,11 +542,18 @@ function toggleRec(id) {
 function handlePDF(input) {
   const file = input.files[0];
   if (!file) return;
+  const maxMB = 4;
+  if (file.size > maxMB * 1024 * 1024) {
+    showToast(`⚠️ PDF 파일이 너무 큽니다 (${(file.size/1024/1024).toFixed(1)}MB). ${maxMB}MB 이하 파일만 지원합니다.`, false);
+    input.value = "";
+    return;
+  }
   const reader = new FileReader();
   reader.onload = e => {
     S.pdfBase64 = e.target.result.split(",")[1];
     S.pdfName = file.name;
-    document.getElementById("pdf-name").textContent = "✅ " + file.name;
+    const sizeMB = (file.size / 1024 / 1024).toFixed(1);
+    document.getElementById("pdf-name").textContent = `✅ ${file.name} (${sizeMB}MB)`;
     document.getElementById("pdf-upload-box").classList.add("has-file");
     showToast("📄 PDF 업로드 완료", true);
     updateAnalyzeBtn();
@@ -751,7 +758,7 @@ ${hasMfrEval ? evalText : "해당 없음 — 패션 카테고리는 제조사 �
     "x-api-key": apiKey,
     "anthropic-version": "2023-06-01",
   };
-  /* pdf 지원은 claude-sonnet-4-6 이상에서 GA — 베타 헤더 불필요 */
+  if (pdfBase64) reqHeaders["anthropic-beta"] = "pdfs-2024-09-25";
 
 
   const res = await fetch("https://holy-cherry-4af3.skminkyu.workers.dev/", {
