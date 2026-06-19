@@ -319,6 +319,7 @@ body{font-family:'Noto Sans KR',sans-serif;background:#f0f2f5;color:#1a1a2e;min-
     <div class="modal-btns">
       <button class="btn btn-ol" onclick="closeCfgModal()">취소</button>
       <button class="btn btn-dark" onclick="testJsonbin()">JSONBin 테스트</button>
+      <button class="btn btn-dark" onclick="testClaudeKey()">Claude API 테스트</button>
       <button class="btn btn-gold" onclick="saveCfgModal()">저장</button>
     </div>
   </div>
@@ -1078,6 +1079,21 @@ function saveCfgModal() {
   closeCfgModal();
   updateStatusChips();
   showToast("✅ 설정이 저장되었습니다.");
+}
+async function testClaudeKey() {
+  const ck = document.getElementById("inp-claude-key").value.trim() || getClaudeKey();
+  if (!ck) { showToast("⚠️ Claude API 키를 입력해주세요.", false); return; }
+  showToast("⏳ API 키 테스트 중...", true);
+  try {
+    const res = await fetch("https://holy-cherry-4af3.skminkyu.workers.dev/", {
+      method: "POST",
+      headers: {"Content-Type":"application/json","x-api-key":ck,"anthropic-version":"2023-06-01"},
+      body: JSON.stringify({model:"claude-3-5-sonnet-20241022",max_tokens:20,messages:[{role:"user",content:[{type:"text",text:"안녕하세요. 테스트입니다."}]}]})
+    });
+    const data = await res.json().catch(()=>({}));
+    if (res.ok) showToast("✅ API 키 정상 (" + res.status + "): " + (data.content?.[0]?.text||"OK"));
+    else showToast(`⚠️ API 오류 (${res.status}): ${data?.error?.message||res.statusText}`, false);
+  } catch(e) { showToast("⚠️ 연결 실패: "+e.message, false); }
 }
 async function testJsonbin() {
   const key = document.getElementById("inp-jsonbin-key").value.trim();
