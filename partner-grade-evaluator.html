@@ -649,7 +649,7 @@ function formatRecordsForAI(records) {
     text += `심사일자: ${rec.header?.심사일자 || "-"} / 심사자: ${rec.header?.심사자 || "-"}\n`;
     text += `총점: ${rec.earned}/${rec.total}점 (${pctStr(rec.earned, rec.total)}%) / 등급: ${gr} / 적합여부: ${jd}\n`;
 
-    /* 감점 항목 (점수 < 배점 이고 비고 있는 항목) */
+    /* 감점 항목: 비고 유무와 무관하게 득점 < 배점인 모든 항목 포함 */
     const issues = [];
     if (rec.J) {
       Object.keys(rec.J).forEach(k => {
@@ -658,15 +658,15 @@ function formatRecordsForAI(records) {
         const bpKey = k + "_bp";
         const bp = rec.J[bpKey] !== undefined ? Number(rec.J[bpKey]) : null;
         const note = rec.J[k + "_note"] || "";
-        if (v !== undefined && v !== "" && v !== "N/A" && bp !== null && Number(v) < bp && note) {
-          issues.push(`  · 항목ID(${k}): ${v}/${bp}점 → ${note}`);
+        if (v !== undefined && v !== "" && v !== "N/A" && bp !== null && Number(v) < bp) {
+          issues.push(`  · 항목(${k}): ${v}/${bp}점${note ? " → " + note : ""}`);
         }
       });
     }
     if (issues.length > 0) {
       text += `감점/부적합 항목 (${issues.length}건):\n` + issues.join("\n") + "\n";
     } else {
-      text += `감점 항목: 없음 (또는 비고 미기재)\n`;
+      text += `감점 항목: 없음\n`;
     }
     if (rec.J?.["기타_텍스트"]) {
       text += `기타 사항: ${rec.J["기타_텍스트"]}\n`;
