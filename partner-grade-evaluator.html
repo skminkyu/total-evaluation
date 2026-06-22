@@ -923,10 +923,43 @@ function judgeColor(j) {
   return "color:#f57f17;";
 }
 
+/* records 데이터에서 직접 감점/부적합 항목 추출 */
+function extractMfIssuesFromRecords(records) {
+  const allIssues = [];
+  records.forEach(rec => {
+    if (!rec.J) return;
+    const evalDate = rec.header?.심사일자 || "";
+    const evalType = CAT_NAMES[rec.clType] || rec.clType;
+    Object.keys(rec.J).forEach(k => {
+      if (k.endsWith("_note") || k.endsWith("_bp") || k === "기타_텍스트") return;
+      const v = rec.J[k];
+      const bp = rec.J[k + "_bp"] !== undefined ? Number(rec.J[k + "_bp"]) : null;
+      const note = rec.J[k + "_note"] || "";
+      if (v !== undefined && v !== "" && v !== "N/A" && bp !== null && Number(v) < bp) {
+        const scored = Number(v);
+        const deductPct = bp > 0 ? (bp - scored) / bp : 0;
+        const severity = deductPct >= 0.5 ? "high" : deductPct >= 0.3 ? "medium" : "low";
+        allIssues.push({
+          section: evalType + (evalDate ? " (" + evalDate + ")" : ""),
+          item: k,
+          score: scored + "/" + bp + "점",
+          severity,
+          finding: note || "감점 항목 (비고 미기재)",
+          _deductPct: deductPct
+        });
+      }
+    });
+  });
+  /* 심각도 높은 순 정렬 */
+  allIssues.sort((a, b) => b._deductPct - a._deductPct);
+  return allIssues;
+}
+
 function renderResult(d, records) {
   const pg = d.partnerGrade || {};
   const es = d.evaluationSummary || {};
-  const mfIssues = d.manufacturerKeyIssues || [];
+  /* Claude 응답 대신 records에서 직접 추출 — 항상 정확한 데이터 보장 */
+  const mfIssues = records.length > 0 ? extractMfIssuesFromRecords(records) : (d.manufacturerKeyIssues || []);
   const qa = d.qualityAnalysis || {};
   const actions = d.actionItems || [];
   const today = new Date().toLocaleDateString("ko-KR");
@@ -1027,15 +1060,19 @@ function renderResult(d, records) {
   ${mfIssues.length > 0 ? `
   <div class="block">
     <div class="block-head">🏭 제조사 현장 평가 부적합 요약 <span class="cnt">${mfIssues.length}건</span></div>
-    ${mfIssues.map(i => `
-    <div class="issue-item">
-      <div class="issue-score">${esc(i.score || "")}</div>
+    ${mfIssues.map(i => {
+      const svColor = i.severity === "high" ? "#c62828" : i.severity === "medium" ? "#f57f17" : "#546e7a";
+      const svLabel = i.severity === "high" ? "고위험" : i.severity === "medium" ? "중위험" : "저위험";
+      const hasNote = i.finding && i.finding !== "감점 항목 (비고 미기재)";
+      return `<div class="issue-item">
+      <div class="issue-score" style="border-left:3px solid ${svColor};">${esc(i.score || "")}<br><span style="font-size:10px;color:${svColor};font-weight:600;">${svLabel}</span></div>
       <div class="issue-body">
-        <div class="issue-section">${esc(i.section || "")} · ${esc(i.item || "")}</div>
-        <div class="issue-text">${esc(i.finding || "")}</div>
+        <div class="issue-section">${esc(i.section || "")} · <strong>${esc(i.item || "")}</strong></div>
+        <div class="issue-text" style="color:${hasNote ? "#333" : "#888"};">${esc(i.finding || "")}</div>
       </div>
-    </div>`).join("")}
-  </div>` : ""}
+    </div>`;
+    }).join("")}
+  </div>` : (records.length > 0 ? `<div class="block"><div class="block-head">🏭 제조사 현장 평가 부적합 요약</div><p style="color:#888;font-size:13px;padding:8px 0;">감점 항목 없음 — 전 항목 만점</p></div>` : "")}
 
   <!-- 품질불만 분석 -->
   <div class="block">
