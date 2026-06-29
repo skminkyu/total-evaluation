@@ -408,10 +408,34 @@ function updateStatusChips() {
 /* ════════════════════════════════════════
    JSONBin
 ════════════════════════════════════════ */
+/* qachecklist_11 기준: GitHub Gist가 primary 저장소 */
+const GIST_OWNER = "skminkyu";
+const GIST_ID    = "9b65c5a068fe1d038baa30969eb9640b";
+const GIST_FILE  = "qa_records.json";
+
 async function cloudLoad() {
-  const cfg = loadCfg();
-  if (!cfg.masterKey || !cfg.binId) return null;
+  /* 1차: GitHub Gist (인증 불필요 — raw URL로 공개 접근) */
   try {
+    const url = `https://gist.githubusercontent.com/${GIST_OWNER}/${GIST_ID}/raw/${GIST_FILE}?t=${Date.now()}`;
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), 10000);
+    let r;
+    try { r = await fetch(url, {signal: ctrl.signal}); } finally { clearTimeout(t); }
+    if (r.ok) {
+      const text = await r.text();
+      let arr;
+      try { arr = JSON.parse(text); } catch(_) { arr = []; }
+      if (Array.isArray(arr) && arr.length > 0) {
+        console.log("Gist 로드:", arr.length + "건");
+        return arr;
+      }
+    }
+  } catch (_) {}
+
+  /* 2차 폴백: JSONBin (이전 데이터 호환) */
+  try {
+    const cfg = loadCfg();
+    if (!cfg.masterKey || !cfg.binId) return null;
     const ctrl = new AbortController();
     const t = setTimeout(() => ctrl.abort(), 8000);
     let r;
