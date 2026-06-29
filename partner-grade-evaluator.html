@@ -1032,8 +1032,17 @@ function extractMfIssuesFromRecords(records) {
       });
     });
   });
-  allIssues.sort((a, b) => b._deductPct - a._deductPct || b._date.localeCompare(a._date));
-  return allIssues;
+  // 동일 항목(item key)이 여러 평가 이력에 걸쳐 중복 집계되지 않도록
+  // 항목별로 가장 최근 기록만 유지
+  const seen = new Map();
+  allIssues.sort((a, b) => b._date.localeCompare(a._date));
+  const deduped = allIssues.filter(i => {
+    if (seen.has(i.item)) return false;
+    seen.set(i.item, true);
+    return true;
+  });
+  deduped.sort((a, b) => b._deductPct - a._deductPct);
+  return deduped;
 }
 
 /* ════════════════════════════════════════
