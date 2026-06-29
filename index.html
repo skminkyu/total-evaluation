@@ -446,8 +446,8 @@ async function loadRecords() {
     showToast("⚠️ JSONBin 연결 실패", false);
     return;
   }
-  /* 식품(haccp_g, haccp_s) + 뷰티(cgmp) 카테고리만 필터 */
-  const valid = recs.filter(r => r.clType && ["cgmp","haccp_g","haccp_s"].includes(r.clType));
+  /* id 또는 header가 있는 레코드만 유효 처리 (clType 무관하게 모두 포함) */
+  const valid = recs.filter(r => r && (r.id || r.header));
   S.allRecords = valid;
   setLoadStatus(`✅ 총 ${valid.length}건 로드됨 — 업소명 기준으로 그룹핑`);
   document.getElementById("cat-filter-row").style.display = "flex";
