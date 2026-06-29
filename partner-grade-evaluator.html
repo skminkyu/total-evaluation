@@ -656,10 +656,14 @@ function formatRecordsForAI(records) {
         if (k.endsWith("_note") || k.endsWith("_bp") || k === "기타_텍스트") return;
         const v = rec.J[k];
         const bpKey = k + "_bp";
-        const bp = rec.J[bpKey] !== undefined ? Number(rec.J[bpKey]) : null;
+        const bpFromJ = rec.J[bpKey];
+        const def = ITEM_DEF[k];
+        const bp = (bpFromJ !== undefined && bpFromJ !== "" && bpFromJ !== "N/A")
+          ? Number(bpFromJ)
+          : (def ? def.bp : null);
         const note = rec.J[k + "_note"] || "";
-        if (v !== undefined && v !== "" && v !== "N/A" && bp !== null && Number(v) < bp && note) {
-          issues.push(`  · 항목ID(${k}): ${v}/${bp}점 → ${note}`);
+        if (v !== undefined && v !== "" && v !== "N/A" && bp !== null && Number(v) < bp) {
+          issues.push(`  · 항목ID(${k}): ${v}/${bp}점${note ? " → " + note : ""}`);
         }
       });
     }
@@ -1013,12 +1017,11 @@ function extractMfIssuesFromRecords(records) {
       const v = rec.J[k];
       if (v === undefined || v === "" || v === "N/A") return;
       const bpFromJ = rec.J[k + "_bp"];
-      if (bpFromJ === "N/A" && (v === "N/A" || v === undefined || v === "")) return;
       const def = ITEM_DEF[k];
       const bp = (bpFromJ !== undefined && bpFromJ !== "" && bpFromJ !== "N/A")
         ? Number(bpFromJ)
-        : (def ? def.bp : 3); /* ITEM_DEF에 없어도 기본 배점 3점으로 처리 */
-      if (bp <= 0 || Number(v) >= bp) return;
+        : (def ? def.bp : null);
+      if (bp === null || bp <= 0 || Number(v) >= bp) return;
       const scored = Number(v);
       const note = rec.J[k + "_note"] || "";
       const deductPct = bp > 0 ? (bp - scored) / bp : 0;
