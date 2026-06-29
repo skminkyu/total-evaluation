@@ -555,7 +555,7 @@ function renderMfrList() {
 function renderHistoryRow(records) {
   const chips = records.map(rec => {
     const gr = calcGrade(rec.earned, rec.total, rec.clType);
-    const isSelected = S.selectedRecIds.includes(rec.id);
+    const isSelected = S.selectedRecIds.includes(String(rec.id));
     const label = `${rec.header?.심사일자 || "?"} ${TYPE_ICONS[rec.clType]||""} ${gr}등급`;
     return `<span class="hist-chip ${isSelected ? "selected" : ""}" data-rec-id="${esc(String(rec.id))}">${label}</span>`;
   }).join("");
