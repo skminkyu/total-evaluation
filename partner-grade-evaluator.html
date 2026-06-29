@@ -938,6 +938,7 @@ const ITEM_DEF = (function() {
   reg("c3_1","2. 제조 제2절 원자재의 관리","원자재 입고 검사",3);
   reg("c3_2","2. 제조 제2절 원자재의 관리","원자재 관리 기준서",3);
   reg("c3_3","2. 제조 제2절 원자재의 관리","보관 조건",3);
+  reg("c3_4","2. 제조 제2절 원자재의 관리","원자재 보관 기준서",3);
   reg("c3_5","2. 제조 제2절 원자재의 관리","용수 품질 기준 및 검사",3);
   reg("c4_1","2. 제조 제3절 제조 관리","제조 공정 문서화",3);
   reg("c4_2","2. 제조 제3절 제조 관리","제조 기준서",3);
@@ -1187,7 +1188,7 @@ function renderResult(d, records) {
   <!-- 품질불만 분석 -->
   <div class="block">
     <div class="block-head">📊 품질불만 분석</div>
-    <p class="analysis-text" style="margin-bottom:10px;">${esc(qa.overview || "")}</p>
+    <p class="analysis-text" style="margin-bottom:10px;">${esc(cleanText(qa.overview || ""))}</p>
     ${(qa.topIssues || []).map(t => `
     <div class="complaint-item">
       <div class="rank-circle">${t.rank}</div>
@@ -1423,6 +1424,11 @@ function showToast(msg, ok = true) {
 /* ════════════════════════════════════════
    XSS 방어
 ════════════════════════════════════════ */
+function cleanText(s) {
+  if (s === undefined || s === null) return "";
+  // Remove garbled PDF replacement characters (◆, □, ▶, ◇, ■ used as encoding artifacts)
+  return String(s).replace(/[◆◇□■▶▷►◀◁◄]/g, "").replace(/\s{2,}/g, " ").trim();
+}
 function esc(s) {
   if (s === undefined || s === null) return "";
   return String(s)
