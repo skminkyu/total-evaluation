@@ -662,8 +662,8 @@ function formatRecordsForAI(records) {
           ? Number(bpFromJ)
           : (def ? def.bp : null);
         const note = rec.J[k + "_note"] || "";
-        if (v !== undefined && v !== "" && v !== "N/A" && bp !== null && Number(v) < bp) {
-          issues.push(`  · 항목ID(${k}): ${v}/${bp}점${note ? " → " + note : ""}`);
+        if (v !== undefined && v !== "" && v !== "N/A" && bp !== null && Number(v) < bp && note.trim()) {
+          issues.push(`  · 항목ID(${k}): ${v}/${bp}점 → ${note}`);
         }
       });
     }
@@ -1021,16 +1021,16 @@ function extractMfIssuesFromRecords(records) {
       const bp = (bpFromJ !== undefined && bpFromJ !== "" && bpFromJ !== "N/A")
         ? Number(bpFromJ)
         : (def ? def.bp : null);
-      if (bp === null || bp <= 0 || Number(v) >= bp) return;
-      const scored = Number(v);
       const note = rec.J[k + "_note"] || "";
+      if (bp === null || bp <= 0 || Number(v) >= bp || !note.trim()) return;
+      const scored = Number(v);
       const deductPct = bp > 0 ? (bp - scored) / bp : 0;
       const severity = deductPct >= 0.5 ? "high" : deductPct >= 0.3 ? "medium" : "low";
       allIssues.push({
         section: def ? def.section : (CAT_NAMES[rec.clType] || rec.clType),
         item: def ? def.item : k,
         score: scored + "/" + bp + "점",
-        severity, finding: note || "감점 항목 (비고 미기재)",
+        severity, finding: note,
         _deductPct: deductPct, _date: evalDate
       });
     });
