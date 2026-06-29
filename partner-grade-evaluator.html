@@ -78,9 +78,9 @@ body{font-family:'Noto Sans KR',sans-serif;background:#f0f2f5;color:#1a1a2e;min-
 
 /* ── 평가 이력 칩 ── */
 .history-row{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px;}
-.hist-chip{border:1px solid #e0e4ea;border-radius:7px;padding:3px 9px;font-size:11px;display:flex;align-items:center;gap:4px;cursor:pointer;transition:.2s;}
-.hist-chip:hover{border-color:#0f2547;}
-.hist-chip.selected{border-color:#0f2547;background:#e8eaf6;}
+.hist-chip{border:2px solid #e0e4ea;border-radius:7px;padding:3px 9px;font-size:11px;display:flex;align-items:center;gap:4px;cursor:pointer;transition:.2s;user-select:none;}
+.hist-chip:hover{border-color:#0f2547;background:#f0f4ff;}
+.hist-chip.selected{border-color:#0f2547;background:#0f2547;color:#e8c872;font-weight:700;box-shadow:0 2px 6px rgba(15,37,71,.3);}
 
 /* ── 업로드 박스 ── */
 .upload-box{border:2px dashed #cfd8dc;border-radius:10px;padding:18px;text-align:center;cursor:pointer;position:relative;background:#f8f9ff;transition:.2s;}
