@@ -33,7 +33,7 @@ exports.handler = async (event) => {
         "x-api-key": apiKey,
         "anthropic-version": event.headers["anthropic-version"] || "2023-06-01",
       },
-      timeout: 25000,
+      timeout: 55000,
     };
 
     const req = https.request(options, (res) => {
