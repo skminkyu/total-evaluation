@@ -357,7 +357,12 @@ body{font-family:'Noto Sans KR',sans-serif;background:#f0f2f5;color:#1a1a2e;min-
     <div class="card-title">🤖 엑셀 데이터 기반 종합 결론 분석
       <span class="ct-badge" style="background:#e8f5e9;color:#2e7d32;">제조사 평가 이력 연동</span>
     </div>
-    <p style="font-size:12px;color:#546e7a;margin-bottom:12px;">품질 인사이트 리포트 데이터와 제조사 평가 이력(로드된 경우)을 결합하여 Claude AI가 종합 결론을 도출합니다.</p>
+    <p style="font-size:12px;color:#546e7a;margin-bottom:10px;">상품별 제조사를 지정하면, 로드된 제조사 평가 이력과 연결하여 종합 분석합니다. 제조사 평가 이력이 없는 상품은 <b>없음</b>으로 선택하세요.</p>
+    <!-- 상품별 제조사 매핑 -->
+    <div id="eq-mfr-map-area" style="margin-bottom:14px;">
+      <div style="font-size:12px;font-weight:600;color:#0f2547;margin-bottom:8px;">상품별 제조사 매핑 <span style="font-weight:400;color:#90a4ae;">(제조사 평가 이력 로드 시 활성화)</span></div>
+      <div id="eq-mfr-map-list" style="display:flex;flex-direction:column;gap:6px;"></div>
+    </div>
     <button class="btn btn-dark" onclick="runExcelAnalysis()">🔍 종합 결론 분석 실행</button>
   </div>
   <div id="eq-result-wrap" style="display:none;"></div>
@@ -869,6 +874,163 @@ function formatRecordsForAI(records) {
 /* ════════════════════════════════════════
    Claude API 호출
 ════════════════════════════════════════ */
+// 엑셀 기반 종합 결론 분석 전용 Claude 호출
+// products: 선택 상품 배열, productMfrMap: {code → 업소명}, mfrRecordsMap: {업소명 → records[]}
+async function callClaudeExcel(mfrEvalText, excelQualityText, products, productMfrMap, mfrRecordsMap) {
+  const apiKey = getClaudeKey();
+  if (!apiKey) throw new Error("Claude API 키가 설정되지 않았습니다. ⚙️ 설정에서 입력해주세요.");
+
+  // 상품별 제조사 현황 요약
+  const productMfrSummary = products.map(p => {
+    const mfr = productMfrMap[p.code] || "";
+    const recs = mfr ? (mfrRecordsMap[mfr] || []) : [];
+    return `· [${p.code}] ${p.name}: 제조사=${mfr || "미지정"}, 평가이력=${recs.length > 0 ? `${recs.length}건 있음` : "없음"}`;
+  }).join("\n");
+
+  const hasSomeMfrEval = Object.values(productMfrMap).some(m => m && mfrRecordsMap[m]?.length > 0);
+  const hasNoMfrEval = products.some(p => !productMfrMap[p.code] || !(mfrRecordsMap[productMfrMap[p.code]]?.length > 0));
+
+  // 제조사별 부적합 항목 추출
+  const uniqueMfrs = [...new Set(Object.values(productMfrMap).filter(Boolean))];
+  const allIssueLines = [];
+  uniqueMfrs.forEach(mfrName => {
+    const recs = mfrRecordsMap[mfrName] || [];
+    if (!recs.length) return;
+    const issues = extractMfIssuesFromRecords(recs);
+    if (issues.length > 0) {
+      allIssueLines.push(`[${mfrName} 현장 부적합 항목]`);
+      issues.slice(0, 8).forEach((i, idx) => {
+        allIssueLines.push(`  ${idx+1}. [${i.section}·${i.item}] ${i.score} / ${i.finding.slice(0, 60)}`);
+      });
+    }
+  });
+  const mfIssueText = allIssueLines.length > 0 ? allIssueLines.join("\n") : "  없음";
+
+  const prompt = `당신은 SK스토아 품질관리팀의 수석 QA 분석가입니다.
+아래 엑셀 기반 품질 데이터와 제조사 현장 평가 이력을 종합 분석하여 협력사에 대한 종합 등급 평가서를 작성해주세요.
+
+[분석 대상 상품 및 제조사 현황]
+${productMfrSummary}
+
+[중요 분석 원칙]
+- 제조사 평가 이력이 있는 상품과 없는 상품을 반드시 구분하여 분석하세요.
+- 평가 이력이 있는 상품: 제조사 현장 부적합 항목과 품질불만의 연관성을 구체적으로 서술.
+- 평가 이력이 없는 상품: "제조사 현장 평가 이력 없음 — 품질불만율 데이터만으로 분석" 명시.
+- 모든 상품을 빠짐없이 분석하고 각 상품명을 명시하세요.
+- 종합 등급은 ${hasSomeMfrEval && !hasNoMfrEval ? "제조사 평가 50% + 품질불만율 50% 기준" : hasSomeMfrEval ? "일부 상품은 제조사 평가+품질불만율 혼합, 이력 없는 상품은 품질불만율 100% 기준으로 가중 평균" : "품질불만율 100% 기준 (제조사 평가 이력 없음)"}으로 산정하세요.
+
+[자료 1: 엑셀 기반 품질 인사이트 데이터]
+${excelQualityText}
+
+${mfrEvalText ? `[자료 2: 제조사 현장 평가 이력 (평가이력 있는 제조사만)]\n${mfrEvalText}` : "[자료 2: 제조사 현장 평가 이력] 해당 없음 — 모든 상품 제조사 평가 이력 없음"}
+
+[평가 기준 참고]
+- 화장품 (CGMP): 만점 96점 / S≥90점, A≥80점, B≥71점, C≥61점, D<61점
+- 식품 (HACCP_G): 비율 기준 S≥90%, A≥80%, B≥70%, C≥60%, D<60%
+
+다음 JSON 형식으로만 응답하세요 (순수 JSON, 마크다운 없이):
+{
+  "partnerGrade": {
+    "overall": "S/A/B/C/D 중 하나",
+    "overallScore": 숫자(0~100),
+    "complianceStatus": "적합 또는 조건부 적합 또는 부적합",
+    "manufacturerEvalGrade": "S/A/B/C/D 또는 N/A",
+    "manufacturerEvalSummary": "제조사별 평가 요약 (이력 없는 제조사는 '없음' 명시)",
+    "qualityComplaintGrade": "S/A/B/C/D",
+    "complaintRate": "전체 품질불만율",
+    "trend": "improving 또는 stable 또는 declining 또는 single",
+    "trendLabel": "개선 중 또는 유지 또는 하락 또는 단회 평가"
+  },
+  "evaluationSummary": {
+    "manufacturer": "제조사명(들)",
+    "category": "카테고리명",
+    "evaluationCount": 평가이력_최대_회수,
+    "latestDate": "가장 최근 심사일 또는 N/A",
+    "product": "분석 대상 상품명 목록",
+    "partner": "협력사명"
+  },
+  "qualityAnalysis": {
+    "overview": "품질불만 현황 종합 요약 (4~5문장). 각 상품명을 명시하고 상품별 불만율·건수를 구체적 수치와 함께 서술.",
+    "topIssues": [
+      {"rank": 1, "reason": "사유명", "count": "건수", "rate": "비율", "implication": "해당 불만이 어떤 상품의 어떤 품질 문제와 연결되는지 상품명을 포함하여 구체적 시사점 (2문장)"}
+    ]
+  },
+  "broadcastStats": {
+    "broadcastCount": 0,
+    "totalOrders": 0,
+    "totalShipments": 0,
+    "totalComplaints": 0,
+    "reportPeriod": "-"
+  },
+  "synthAnalysis": "【종합분석】 아래 항목을 통합하여 상세 분석 (총 6~8문장).\\n① 상품별 제조사 현황: 각 상품의 제조사명과 평가이력 유무를 명시. 평가이력이 없는 상품은 '제조사 현장 평가 이력 없음으로 품질불만율 데이터만으로 분석'이라고 명시.\\n② 평가이력 있는 제조사의 현장 부적합 항목과 해당 상품의 품질불만 간 연관성 서술. 부적합 항목명을 직접 인용.\\n③ 평가이력 없는 상품의 품질불만 현황을 상품명을 명시하며 별도 서술.\\n④ Risk History 연관성 (이력 없음이면 'Risk History 이력 없음' 명시)\\n⑤ 종합 결론 및 개선 방향 (긍정적 톤으로 마무리)\\n[금지사항] 구체적 기한 언급 금지 / 거래 중단 등 위협성 표현 금지 / SK스토아 내부 일정 임의 설정 금지"
+}`;
+
+  // Risk History 매칭
+  let matchedRisks = [];
+  if (S.riskRows && S.riskRows.length > 0) {
+    const partnerSet = [...EQ.selectedPartners];
+    matchedRisks = S.riskRows.filter(r => {
+      return partnerSet.some(partner =>
+        r.company.includes(partner.replace("주식회사","").replace("(주)","").trim())
+      ) && r.risk;
+    });
+  }
+  const riskText = matchedRisks.length > 0
+    ? matchedRisks.slice(0, 5).map((r, i) =>
+        `  ${i+1}. [${r.company}] ${r.product}\n     ${r.risk.replace(/\n/g, " ").slice(0, 120)}`
+      ).join("\n")
+    : (S.riskRows && S.riskRows.length > 0 ? "  해당 협력사 Risk History 이력 없음" : "  Risk History 파일 미업로드");
+
+  const fullPrompt = prompt
+    + `\n\n[제조사 현장 부적합 항목 — synthAnalysis 작성 시 반드시 구체적으로 인용]\n${mfIssueText}`
+    + `\n\n[Risk History — synthAnalysis에 반드시 포함. 이력 없으면 "Risk History 이력 없음" 명시]\n${riskText}`;
+
+  const body = {
+    model: "claude-haiku-4-5",
+    max_tokens: 4000,
+    system: "당신은 SK스토아 품질관리팀 수석 QA 분석가입니다. 항상 순수 JSON만 반환합니다.",
+    messages: [{role: "user", content: [{type: "text", text: fullPrompt}]}]
+  };
+
+  const ENDPOINTS = [
+    { url: "/.netlify/functions/claude-proxy",
+      headers: { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01" } },
+    { url: "https://holy-cherry-4af3.skminkyu.workers.dev/",
+      headers: { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01" } },
+  ];
+
+  const MAX_RETRY = 3;
+  let lastErr = null;
+  for (const ep of ENDPOINTS) {
+    for (let attempt = 1; attempt <= MAX_RETRY; attempt++) {
+      if (attempt > 1) await new Promise(r => setTimeout(r, attempt === 2 ? 2000 : 5000));
+      let res;
+      try {
+        res = await fetch(ep.url, { method:"POST", headers:ep.headers, body:JSON.stringify(body) });
+      } catch (netErr) {
+        lastErr = Object.assign(new Error(`네트워크 오류: ${netErr.message}`), {retryable:true});
+        if (attempt < MAX_RETRY) continue;
+        break;
+      }
+      if (res.ok) {
+        const data = await res.json();
+        const raw = data.content?.[0]?.text || "";
+        if (!raw) throw new Error("Claude 응답이 비어있습니다.");
+        const jsonMatch = raw.match(/\{[\s\S]*\}/);
+        if (!jsonMatch) throw new Error("JSON 파싱 실패: " + raw.slice(0, 200));
+        return JSON.parse(jsonMatch[0]);
+      } else {
+        const errText = await res.text().catch(() => "");
+        if (res.status === 401 || res.status === 403) throw Object.assign(new Error(`API 키 오류 (${res.status})`), {code:"INVALID_KEY"});
+        lastErr = Object.assign(new Error(`API 오류 ${res.status}: ${errText.slice(0,100)}`), {retryable: res.status >= 500});
+        if (attempt < MAX_RETRY && res.status >= 500) continue;
+        break;
+      }
+    }
+  }
+  throw lastErr || new Error("분석 요청 실패");
+}
+
 async function callClaude(evalText, pdfText) {
   const apiKey = getClaudeKey();
   if (!apiKey) throw new Error("Claude API 키가 설정되지 않았습니다. ⚙️ 설정에서 입력해주세요.");
@@ -1793,6 +1955,43 @@ function pctFmt(v) {
   return (Number(v) * 100).toFixed(2) + "%";
 }
 
+// 상품별 제조사 매핑 UI 렌더
+function renderEqMfrMap(products) {
+  const mapList = document.getElementById("eq-mfr-map-list");
+  mapList.innerHTML = "";
+  const mfrNames = [...new Set(S.allRecords.map(r => r.header?.업소명).filter(Boolean))].sort();
+  const hasRecords = mfrNames.length > 0;
+
+  products.forEach(p => {
+    const row = document.createElement("div");
+    row.style.cssText = "display:flex;align-items:center;gap:10px;padding:6px 10px;background:#f8f9ff;border:1px solid #e0e4ea;border-radius:8px;";
+
+    const nameSpan = document.createElement("div");
+    nameSpan.style.cssText = "flex:1;font-size:12px;color:#0f2547;";
+    nameSpan.textContent = `[${p.code}] ${p.name}`;
+
+    const sel = document.createElement("select");
+    sel.id = `eq-mfr-sel-${p.code}`;
+    sel.style.cssText = "width:220px;border:1px solid #cfd8dc;border-radius:6px;padding:5px 8px;font-size:12px;font-family:'Noto Sans KR',sans-serif;";
+
+    const noneOpt = document.createElement("option");
+    noneOpt.value = ""; noneOpt.textContent = hasRecords ? "없음 (제조사 평가 이력 없음)" : "— 제조사 평가 이력 미로드 —";
+    sel.appendChild(noneOpt);
+
+    if (hasRecords) {
+      mfrNames.forEach(name => {
+        const opt = document.createElement("option");
+        opt.value = name; opt.textContent = name;
+        sel.appendChild(opt);
+      });
+    }
+
+    row.appendChild(nameSpan);
+    row.appendChild(sel);
+    mapList.appendChild(row);
+  });
+}
+
 async function runExcelAnalysis() {
   // 엑셀 품질 데이터를 텍스트로 직렬화 → S.excelQualityText에 저장 후 종합 분석 실행
   const selectedCodes = [...EQ.selectedProducts];
@@ -1841,10 +2040,47 @@ async function runExcelAnalysis() {
     lines.push("");
   }
 
-  S.excelQualityText = lines.join("\n");
+  // 상품별 제조사 매핑 읽기
+  const productMfrMap = {}; // code → 업소명 or ""
+  products.forEach(p => {
+    const sel = document.getElementById(`eq-mfr-sel-${p.code}`);
+    productMfrMap[p.code] = sel ? sel.value : "";
+  });
 
-  // 제조사 평가 이력 로드 여부 확인
-  const records = S.selectedMfr ? getSelectedRecords() : [];
+  // 상품별 제조사 평가 이력 구성
+  const uniqueMfrNames = [...new Set(Object.values(productMfrMap).filter(Boolean))];
+  const mfrRecordsMap = {}; // 업소명 → records[]
+  uniqueMfrNames.forEach(mfrName => {
+    mfrRecordsMap[mfrName] = S.allRecords
+      .filter(r => (r.header?.업소명 || "") === mfrName)
+      .sort((a, b) => (a.header?.심사일자||"").localeCompare(b.header?.심사일자||""));
+  });
+
+  // 상품별 제조사 연결 정보를 lines에 추가
+  lines.push("[상품별 제조사 매핑 및 평가 이력 여부]");
+  products.forEach(p => {
+    const mfr = productMfrMap[p.code];
+    const hasEval = mfr && mfrRecordsMap[mfr] && mfrRecordsMap[mfr].length > 0;
+    lines.push(`· [${p.code}] ${p.name} → 제조사: ${mfr || "미지정/없음"} | 평가이력: ${hasEval ? `${mfrRecordsMap[mfr].length}건` : "없음"}`);
+  });
+  lines.push("");
+
+  // 제조사별 평가 이력 텍스트 구성 (있는 것만)
+  let mfrEvalText = "";
+  if (uniqueMfrNames.length > 0) {
+    const parts = [];
+    uniqueMfrNames.forEach(mfrName => {
+      const recs = mfrRecordsMap[mfrName];
+      if (!recs || recs.length === 0) return;
+      // 해당 제조사 관련 상품명 목록
+      const relatedProducts = products.filter(p => productMfrMap[p.code] === mfrName).map(p => p.name).join(", ");
+      parts.push(`=== 제조사: ${mfrName} (관련 상품: ${relatedProducts}) ===`);
+      parts.push(formatRecordsForAI(recs));
+    });
+    mfrEvalText = parts.join("\n\n");
+  }
+
+  S.excelQualityText = lines.join("\n");
 
   // 결과 영역 준비
   const resultWrap = document.getElementById("eq-result-wrap");
@@ -1853,13 +2089,14 @@ async function runExcelAnalysis() {
   resultWrap.scrollIntoView({behavior:"smooth"});
 
   try {
-    const evalText = records.length > 0 ? formatRecordsForAI(records) : "";
-    const parsed = await callClaude(evalText, S.excelQualityText);
+    // callClaude에 제조사 평가이력 텍스트 + 엑셀 품질데이터 전달
+    const parsed = await callClaudeExcel(mfrEvalText, S.excelQualityText, products, productMfrMap, mfrRecordsMap);
     S.result = parsed;
-    // eq-result-wrap에 결과 렌더
+    // eq-result-wrap에 결과 렌더 (allRecords에서 대표 records 구성)
+    const representativeRecs = uniqueMfrNames.length > 0 && mfrRecordsMap[uniqueMfrNames[0]]
+      ? mfrRecordsMap[uniqueMfrNames[0]] : [];
     resultWrap.innerHTML = "";
-    renderResult(parsed, records);
-    // renderResult는 result-wrap에 렌더하므로 eq-result-wrap으로 이동
+    renderResult(parsed, representativeRecs);
     const rendered = document.getElementById("result-wrap");
     if (rendered && rendered.innerHTML) {
       resultWrap.innerHTML = rendered.innerHTML;
@@ -2077,8 +2314,9 @@ function generateExcelReport() {
   wrap.style.display = "block";
   wrap.innerHTML = html;
 
-  // 엑셀 리포트 완료 → 종합 결론 분석 버튼 표시
+  // 엑셀 리포트 완료 → 종합 결론 분석 버튼 표시 + 제조사 매핑 UI 초기화
   document.getElementById("eq-analyze-area").style.display = "block";
+  renderEqMfrMap(products);
 
   wrap.scrollIntoView({behavior:"smooth"});
   showToast("✅ 품질 인사이트 리포트 생성 완료", true);
