@@ -264,7 +264,7 @@ body{font-family:'Noto Sans KR',sans-serif;background:#f0f2f5;color:#1a1a2e;min-
   <!-- ③ 품질 인사이트 리포트 업로드 -->
   <div class="card">
     <div class="card-title">📊 품질 인사이트 리포트 업로드
-      <span class="ct-badge" style="background:#e3f2fd;color:#1565c0;">선택 사항</span>
+      <span class="ct-badge" style="background:#fce4ec;color:#c62828;">PDF · 필수</span>
     </div>
     <div class="upload-box" id="pdf-upload-box">
       <input type="file" accept=".pdf" id="pdf-input" multiple onchange="handlePDF(this)"/>
@@ -307,12 +307,10 @@ body{font-family:'Noto Sans KR',sans-serif;background:#f0f2f5;color:#1a1a2e;min-
       </div>
     </div>
 
-    <!-- 협력사 선택 -->
+    <!-- 협력사 선택 (복수) -->
     <div id="eq-partner-area" style="display:none;margin-bottom:12px;">
-      <div style="font-size:12px;font-weight:600;color:#0f2547;margin-bottom:6px;">② 협력사 선택</div>
-      <select id="eq-partner-select" style="width:100%;border:1px solid #cfd8dc;border-radius:7px;padding:8px 10px;font-size:13px;font-family:'Noto Sans KR',sans-serif;" onchange="onEqPartnerChange()">
-        <option value="">-- 협력사를 선택하세요 --</option>
-      </select>
+      <div style="font-size:12px;font-weight:600;color:#0f2547;margin-bottom:6px;">② 협력사 선택 <span style="font-size:10px;color:#90a4ae;">(복수 선택 가능)</span></div>
+      <div id="eq-partner-list" style="display:flex;flex-direction:column;gap:4px;max-height:180px;overflow-y:auto;border:1px solid #e0e4ea;border-radius:7px;padding:8px;"></div>
     </div>
 
     <!-- 상품 선택 -->
@@ -715,7 +713,7 @@ async function handleRiskExcel(input) {
    분석 버튼 활성화
 ════════════════════════════════════════ */
 function updateAnalyzeBtn() {
-  const hasPdf = !!(S.pdfBase64 || S.pdfText || S.excelQualityText);
+  const hasPdf = !!(S.pdfBase64 || S.pdfText);
   document.getElementById("btn-analyze").disabled = !hasPdf;
   if (!hasPdf) {
     document.getElementById("analyze-hint").textContent = "품질 인사이트 리포트 PDF 또는 엑셀 품질 데이터를 업로드하면 분석 버튼이 활성화됩니다.";
@@ -1072,7 +1070,7 @@ function getSelectedRecords() {
 }
 
 async function runAnalysis() {
-  if (!S.pdfText && !S.excelQualityText) { showToast("품질 인사이트 리포트 PDF 또는 품질 데이터 엑셀 파일을 먼저 업로드해주세요.", false); return; }
+  if (!S.pdfText) { showToast("품질 인사이트 리포트 PDF를 먼저 업로드해주세요.", false); return; }
   const records = S.selectedMfr ? getSelectedRecords() : [];
 
   document.getElementById("btn-analyze").disabled = true;
@@ -1647,7 +1645,7 @@ const EQ = {
   rateRows: [],      // 품질불만율 파일 파싱 결과
   broadcastRows: [], // 방송실적
   returnRows: [],    // 반품교환사유
-  selectedPartner: "",
+  selectedPartners: new Set(),
   selectedProducts: new Set(),
 };
 
@@ -1693,14 +1691,27 @@ async function handleEqRate(input) {
     });
   }
 
-  // 협력사 드롭다운 채우기
+  // 협력사 체크박스 채우기
   const partners = [...new Set(EQ.rateRows.map(r => r.partner).filter(Boolean))].sort();
-  const sel = document.getElementById("eq-partner-select");
-  sel.innerHTML = '<option value="">-- 협력사를 선택하세요 --</option>';
+  EQ.selectedPartners.clear();
+  const listEl = document.getElementById("eq-partner-list");
+  listEl.innerHTML = "";
   partners.forEach(p => {
-    const opt = document.createElement("option");
-    opt.value = p; opt.textContent = p;
-    sel.appendChild(opt);
+    const div = document.createElement("div");
+    div.style.cssText = "display:flex;align-items:center;gap:8px;padding:3px 0;";
+    const cb = document.createElement("input");
+    cb.type = "checkbox"; cb.value = p; cb.id = `eq-pcb-${p}`;
+    cb.onchange = () => {
+      if (cb.checked) EQ.selectedPartners.add(p);
+      else EQ.selectedPartners.delete(p);
+      onEqPartnerChange();
+    };
+    const label = document.createElement("label");
+    label.htmlFor = `eq-pcb-${p}`;
+    label.style.cssText = "font-size:12px;cursor:pointer;";
+    label.textContent = p;
+    div.appendChild(cb); div.appendChild(label);
+    listEl.appendChild(div);
   });
   document.getElementById("eq-partner-area").style.display = "block";
   document.getElementById("eq-rate-box").classList.add("has-file");
@@ -1709,9 +1720,8 @@ async function handleEqRate(input) {
 }
 
 function onEqPartnerChange() {
-  EQ.selectedPartner = document.getElementById("eq-partner-select").value;
   EQ.selectedProducts.clear();
-  const products = EQ.rateRows.filter(r => r.partner === EQ.selectedPartner);
+  const products = EQ.rateRows.filter(r => EQ.selectedPartners.has(r.partner));
   const listEl = document.getElementById("eq-product-list");
   listEl.innerHTML = "";
   products.forEach(p => {
@@ -1726,7 +1736,7 @@ function onEqPartnerChange() {
     };
     const label = document.createElement("label");
     label.style.cssText = "font-size:12px;cursor:pointer;line-height:1.4;";
-    label.textContent = `[${p.code}] ${p.name}`;
+    label.textContent = `[${p.code}] ${p.name} (${p.partner})`;
     div.appendChild(cb); div.appendChild(label);
     listEl.appendChild(div);
   });
@@ -1764,7 +1774,7 @@ async function handleEqReturn(input) {
 }
 
 function updateEqGenerateBtn() {
-  const ready = EQ.selectedPartner && EQ.selectedProducts.size > 0;
+  const ready = EQ.selectedPartners.size > 0 && EQ.selectedProducts.size > 0;
   document.getElementById("eq-generate-area").style.display = ready ? "block" : "none";
 }
 
@@ -1775,7 +1785,7 @@ function pctFmt(v) {
 
 function generateExcelReport() {
   const selectedCodes = [...EQ.selectedProducts];
-  const products = EQ.rateRows.filter(r => r.partner === EQ.selectedPartner && selectedCodes.includes(r.code));
+  const products = EQ.rateRows.filter(r => EQ.selectedPartners.has(r.partner) && selectedCodes.includes(r.code));
   if (!products.length) { showToast("선택된 상품이 없습니다.", false); return; }
 
   // 협력사 품질 지표 종합 (선택 상품 합산)
@@ -1915,7 +1925,7 @@ function generateExcelReport() {
   const today = new Date().toLocaleDateString("ko-KR");
   const html = `
   <div class="block">
-    <div class="block-head">📈 품질 인사이트 리포트 — ${esc(EQ.selectedPartner)}</div>
+    <div class="block-head">📈 품질 인사이트 리포트 — ${esc([...EQ.selectedPartners].join(", "))}</div>
     <p style="font-size:11px;color:#90a4ae;text-align:right;margin-bottom:12px;">발행일: ${today} · SK스토아 품질관리팀</p>
 
     <!-- 협력사 품질 지표 종합 -->
