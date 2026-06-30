@@ -264,7 +264,7 @@ body{font-family:'Noto Sans KR',sans-serif;background:#f0f2f5;color:#1a1a2e;min-
   <!-- ③ 품질 인사이트 리포트 업로드 -->
   <div class="card">
     <div class="card-title">📊 품질 인사이트 리포트 업로드
-      <span class="ct-badge" style="background:#fce4ec;color:#c62828;">PDF · 필수</span>
+      <span class="ct-badge" style="background:#e3f2fd;color:#1565c0;">선택 사항 — 엑셀 리포트 없을 경우 필수</span>
     </div>
     <div class="upload-box" id="pdf-upload-box">
       <input type="file" accept=".pdf" id="pdf-input" multiple onchange="handlePDF(this)"/>
@@ -351,6 +351,16 @@ body{font-family:'Noto Sans KR',sans-serif;background:#f0f2f5;color:#1a1a2e;min-
 
   <!-- 엑셀 품질 인사이트 리포트 결과 -->
   <div id="excel-report-wrap" style="display:none;"></div>
+
+  <!-- 엑셀 리포트 기반 종합 결론 분석 버튼 -->
+  <div id="eq-analyze-area" style="display:none;" class="card">
+    <div class="card-title">🤖 엑셀 데이터 기반 종합 결론 분석
+      <span class="ct-badge" style="background:#e8f5e9;color:#2e7d32;">제조사 평가 이력 연동</span>
+    </div>
+    <p style="font-size:12px;color:#546e7a;margin-bottom:12px;">품질 인사이트 리포트 데이터와 제조사 평가 이력(로드된 경우)을 결합하여 Claude AI가 종합 결론을 도출합니다.</p>
+    <button class="btn btn-dark" onclick="runExcelAnalysis()">🔍 종합 결론 분석 실행</button>
+  </div>
+  <div id="eq-result-wrap" style="display:none;"></div>
 
   <!-- ④ 분석 실행 -->
   <div class="analyze-bar">
@@ -713,7 +723,7 @@ async function handleRiskExcel(input) {
    분석 버튼 활성화
 ════════════════════════════════════════ */
 function updateAnalyzeBtn() {
-  const hasPdf = !!(S.pdfBase64 || S.pdfText);
+  const hasPdf = !!(S.pdfBase64 || S.pdfText || S.excelQualityText);
   document.getElementById("btn-analyze").disabled = !hasPdf;
   if (!hasPdf) {
     document.getElementById("analyze-hint").textContent = "품질 인사이트 리포트 PDF 또는 엑셀 품질 데이터를 업로드하면 분석 버튼이 활성화됩니다.";
@@ -1070,7 +1080,7 @@ function getSelectedRecords() {
 }
 
 async function runAnalysis() {
-  if (!S.pdfText) { showToast("품질 인사이트 리포트 PDF를 먼저 업로드해주세요.", false); return; }
+  if (!S.pdfText && !S.excelQualityText) { showToast("품질 인사이트 리포트 PDF 또는 엑셀 기반 품질 데이터를 먼저 준비해주세요.", false); return; }
   const records = S.selectedMfr ? getSelectedRecords() : [];
 
   document.getElementById("btn-analyze").disabled = true;
@@ -1783,6 +1793,103 @@ function pctFmt(v) {
   return (Number(v) * 100).toFixed(2) + "%";
 }
 
+async function runExcelAnalysis() {
+  // 엑셀 품질 데이터를 텍스트로 직렬화 → S.excelQualityText에 저장 후 종합 분석 실행
+  const selectedCodes = [...EQ.selectedProducts];
+  const products = EQ.rateRows.filter(r => EQ.selectedPartners.has(r.partner) && selectedCodes.includes(r.code));
+  if (!products.length) { showToast("엑셀 리포트를 먼저 생성해주세요.", false); return; }
+
+  const partnerNames = [...EQ.selectedPartners].join(", ");
+  const lines = [];
+  lines.push(`[엑셀 기반 품질 인사이트 데이터] 협력사: ${partnerNames}`);
+  lines.push(`분석 대상 상품 수: ${products.length}개`);
+  lines.push("");
+
+  // 협력사 종합 합산
+  const tOrd = products.reduce((s,p)=>s+p.orders,0);
+  const tShip = products.reduce((s,p)=>s+p.shipments,0);
+  const tCmp = products.reduce((s,p)=>s+p.complaints,0);
+  const tRate = tShip > 0 ? (tCmp/tShip*100).toFixed(2)+"%" : "-";
+  lines.push(`[협력사 품질 지표 종합]`);
+  lines.push(`전체주문수량: ${tOrd.toLocaleString()}건, 전체출고수량: ${tShip.toLocaleString()}건, 품질불만합계: ${tCmp.toLocaleString()}건, 품질불만율: ${tRate}`);
+  lines.push(`외관불량: ${products.reduce((s,p)=>s+p.exterior,0)}건, 사용흔적: ${products.reduce((s,p)=>s+p.used,0)}건, 작동불량: ${products.reduce((s,p)=>s+p.malfunction,0)}건, 상품변질: ${products.reduce((s,p)=>s+p.spoilage,0)}건, 유통기한경과: ${products.reduce((s,p)=>s+p.expired,0)}건`);
+  lines.push("");
+
+  // 상품별 세부
+  lines.push(`[상품별 품질 지표 세부]`);
+  products.forEach(p => {
+    const r = p.shipments > 0 ? (p.complaints/p.shipments*100).toFixed(2)+"%" : "-";
+    lines.push(`· [${p.code}] ${p.name} | 출고:${p.shipments.toLocaleString()} 불만:${p.complaints} 불만율:${r} | 외관:${p.exterior} 사용흔적:${p.used} 작동불량:${p.malfunction} 변질:${p.spoilage} 유통기한:${p.expired}`);
+  });
+  lines.push("");
+
+  // 방송별 현황 (있을 경우)
+  if (EQ.broadcastRows.length > 0) {
+    lines.push(`[방송별 품질불만 현황]`);
+    const bRows = EQ.broadcastRows;
+    let curCode = "", curName = "";
+    for (let i = 2; i < bRows.length; i++) {
+      const r = bRows[i];
+      const aVal = String(r[0]||"").trim();
+      const bVal = String(r[1]||"").trim();
+      const dateStr = excelDateToStr(r[2]);
+      if (aVal && /^\d+$/.test(aVal)) { curCode = aVal; curName = bVal; }
+      if (!selectedCodes.includes(curCode)) continue;
+      if (!dateStr || dateStr === "0001-01-01") continue;
+      lines.push(`· [${curCode}] ${curName} | 방송일자:${dateStr} 주문:${Number(r[5]||0)} 출고:${Number(r[9]||0)} 품질불만:${Number(r[10]||0)}(${pctFmt(Number(r[11]||0))})`);
+    }
+    lines.push("");
+  }
+
+  S.excelQualityText = lines.join("\n");
+
+  // 제조사 평가 이력 로드 여부 확인
+  const records = S.selectedMfr ? getSelectedRecords() : [];
+
+  // 결과 영역 준비
+  const resultWrap = document.getElementById("eq-result-wrap");
+  resultWrap.style.display = "block";
+  resultWrap.innerHTML = `<div class="block"><div style="text-align:center;padding:20px;color:#546e7a;font-size:13px;">⏳ AI 종합 결론 분석 중...</div></div>`;
+  resultWrap.scrollIntoView({behavior:"smooth"});
+
+  try {
+    const evalText = records.length > 0 ? formatRecordsForAI(records) : "";
+    const parsed = await callClaude(evalText, S.excelQualityText);
+    S.result = parsed;
+    // eq-result-wrap에 결과 렌더
+    resultWrap.innerHTML = "";
+    renderResult(parsed, records);
+    // renderResult는 result-wrap에 렌더하므로 eq-result-wrap으로 이동
+    const rendered = document.getElementById("result-wrap");
+    if (rendered && rendered.innerHTML) {
+      resultWrap.innerHTML = rendered.innerHTML;
+      rendered.style.display = "none";
+    }
+    resultWrap.scrollIntoView({behavior:"smooth"});
+  } catch (err) {
+    const errLines = (err.message || "").split("\n").map(l => esc(l)).join("<br>");
+    resultWrap.innerHTML = `<div class="block"><p style="color:#c62828;font-size:13px;line-height:1.6;">⚠️ 오류가 발생했습니다:<br><br>${errLines}</p>
+      <button onclick="runExcelAnalysis()" style="margin-top:10px;padding:7px 16px;background:#555;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:13px;">🔄 다시 시도</button></div>`;
+  }
+}
+
+// 엑셀 날짜 시리얼 → YYYY-MM-DD 변환 (1900 기준)
+function excelDateToStr(val) {
+  if (!val && val !== 0) return "";
+  const s = String(val).trim();
+  // 이미 날짜 문자열 형태이면 앞 10자
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
+  // 숫자 시리얼
+  const n = Number(s);
+  if (!isNaN(n) && n > 1) {
+    const d = new Date(Math.round((n - 25569) * 86400 * 1000));
+    if (!isNaN(d.getTime())) {
+      return d.toISOString().slice(0, 10);
+    }
+  }
+  return s.slice(0, 10);
+}
+
 function generateExcelReport() {
   const selectedCodes = [...EQ.selectedProducts];
   const products = EQ.rateRows.filter(r => EQ.selectedPartners.has(r.partner) && selectedCodes.includes(r.code));
@@ -1793,39 +1900,66 @@ function generateExcelReport() {
   const totalShipments = products.reduce((s, p) => s + p.shipments, 0);
   const totalComplaints = products.reduce((s, p) => s + p.complaints, 0);
   const totalComplaintRate = totalShipments > 0 ? totalComplaints / totalShipments : 0;
+  const totalExterior = products.reduce((s,p)=>s+p.exterior,0);
+  const totalUsed = products.reduce((s,p)=>s+p.used,0);
+  const totalMalfunction = products.reduce((s,p)=>s+p.malfunction,0);
+  const totalSpoilage = products.reduce((s,p)=>s+p.spoilage,0);
+  const totalExpired = products.reduce((s,p)=>s+p.expired,0);
+
+  // 협력사 종합 — 불만 유형별 바 차트
+  const totalTypeDetails = [
+    {label:"외관불량", count:totalExterior},
+    {label:"사용흔적", count:totalUsed},
+    {label:"작동불량", count:totalMalfunction},
+    {label:"상품변질/해동", count:totalSpoilage},
+    {label:"유통기한경과", count:totalExpired},
+  ].filter(d=>d.count>0);
+  const totalMaxCount = Math.max(...totalTypeDetails.map(d=>d.count), 1);
+  const totalTypeBarsHtml = totalTypeDetails.length > 0 ? `
+    <div style="margin-top:12px;padding:12px;background:#fff8f8;border:1px solid #ffcdd2;border-radius:8px;">
+      <div style="font-size:11px;font-weight:600;color:#c62828;margin-bottom:8px;">불만 유형별 합산 현황</div>
+      ${totalTypeDetails.map(d=>`
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+        <div style="width:90px;font-size:11px;color:#546e7a;flex-shrink:0;">${d.label}</div>
+        <div style="flex:1;background:#f0f2f5;border-radius:4px;overflow:hidden;height:16px;">
+          <div style="height:100%;width:${Math.round(d.count/totalMaxCount*100)}%;background:#ef5350;border-radius:4px;min-width:4px;"></div>
+        </div>
+        <div style="width:60px;font-size:11px;font-weight:700;color:#ef5350;text-align:right;flex-shrink:0;">${d.count.toLocaleString()}건</div>
+      </div>`).join("")}
+    </div>` : "";
 
   // 방송실적 파싱 (선택 상품코드 기준)
   let broadcastHtml = "";
   if (EQ.broadcastRows.length > 0) {
     const bRows = EQ.broadcastRows;
-    // 상품별 방송 데이터 추출 (A열=상품코드, B열=상품명, C열=방송일자)
     const broadcastByProduct = {};
     let curCode = "", curName = "";
     for (let i = 2; i < bRows.length; i++) {
       const r = bRows[i];
       const aVal = String(r[0] || "").trim();
       const bVal = String(r[1] || "").trim();
-      const cVal = String(r[2] || "").trim();
+      const rawDate = r[2];
       if (aVal && /^\d+$/.test(aVal)) { curCode = aVal; curName = bVal; }
       if (!selectedCodes.includes(curCode)) continue;
       if (!broadcastByProduct[curCode]) broadcastByProduct[curCode] = {name: curName, rows: []};
-      if (cVal && cVal !== "합계") {
-        broadcastByProduct[curCode].rows.push({
-          date: cVal.slice(0, 10),
-          program: String(r[4] || ""),
-          orders: Number(r[5] || 0),
-          shipments: Number(r[9] || 0),
-          complaints: Number(r[10] || 0),
-          complaintRate: Number(r[11] || 0),
-          productComplaints: Number(r[12] || 0),
-          productComplaintRate: Number(r[13] || 0),
-        });
-      }
+      const dateStr = excelDateToStr(rawDate);
+      // 0001-01-01 이거나 비어있으면 제외
+      if (!dateStr || dateStr === "0001-01-01" || dateStr.startsWith("합계")) continue;
+      broadcastByProduct[curCode].rows.push({
+        date: dateStr,
+        orders: Number(r[5] || 0),
+        shipments: Number(r[9] || 0),
+        complaints: Number(r[10] || 0),
+        complaintRate: Number(r[11] || 0),
+        productComplaints: Number(r[12] || 0),
+        productComplaintRate: Number(r[13] || 0),
+      });
     }
 
     broadcastHtml = Object.entries(broadcastByProduct).map(([code, data]) => `
     <div style="margin-bottom:16px;">
       <div style="font-size:12px;font-weight:700;color:#0f2547;margin-bottom:6px;">[${code}] ${esc(data.name)}</div>
+      ${data.rows.length === 0 ? '<div style="font-size:11px;color:#78909c;">방송 데이터 없음</div>' : `
       <table style="width:100%;border-collapse:collapse;font-size:11px;">
         <thead><tr style="background:#e8eaf6;">
           <th style="padding:5px 8px;border:1px solid #c5cae9;text-align:left;">방송일자</th>
@@ -1847,42 +1981,8 @@ function generateExcelReport() {
             <td style="padding:4px 8px;border:1px solid #e0e4ea;text-align:center;">${pctFmt(r.productComplaintRate)}</td>
           </tr>`).join("")}
         </tbody>
-      </table>
+      </table>`}
     </div>`).join("");
-  }
-
-  // 반품교환사유 파싱
-  let returnHtml = "";
-  if (EQ.returnRows.length > 0) {
-    const rRows = EQ.returnRows;
-    // Row 3(index 2) = header, row 4+ = data
-    const dataRows = rRows.slice(3).filter(r => {
-      const e = Number(r[4] || 0);
-      return e > 0;
-    });
-    if (dataRows.length > 0) {
-      returnHtml = `
-      <table style="width:100%;border-collapse:collapse;font-size:11px;">
-        <thead><tr style="background:#e8eaf6;">
-          <th style="padding:5px 8px;border:1px solid #c5cae9;text-align:left;">구분</th>
-          <th style="padding:5px 8px;border:1px solid #c5cae9;text-align:left;">대분류</th>
-          <th style="padding:5px 8px;border:1px solid #c5cae9;text-align:left;">중분류</th>
-          <th style="padding:5px 8px;border:1px solid #c5cae9;text-align:left;">소분류</th>
-          <th style="padding:5px 8px;border:1px solid #c5cae9;text-align:center;">수량</th>
-          <th style="padding:5px 8px;border:1px solid #c5cae9;text-align:center;">상품비중</th>
-        </tr></thead>
-        <tbody>
-          ${dataRows.slice(0, 20).map((r,i) => `<tr style="${i%2===1?'background:#fafafa':''}">
-            <td style="padding:4px 8px;border:1px solid #e0e4ea;">${esc(String(r[0]||""))}</td>
-            <td style="padding:4px 8px;border:1px solid #e0e4ea;">${esc(String(r[1]||""))}</td>
-            <td style="padding:4px 8px;border:1px solid #e0e4ea;">${esc(String(r[2]||""))}</td>
-            <td style="padding:4px 8px;border:1px solid #e0e4ea;">${esc(String(r[3]||""))}</td>
-            <td style="padding:4px 8px;border:1px solid #e0e4ea;text-align:center;">${Number(r[4]||0).toLocaleString()}</td>
-            <td style="padding:4px 8px;border:1px solid #e0e4ea;text-align:center;">${pctFmt(r[5])}</td>
-          </tr>`).join("")}
-        </tbody>
-      </table>`;
-    }
   }
 
   // 상품별 품질 지표 세부
@@ -1898,26 +1998,38 @@ function generateExcelReport() {
     return `
     <div style="background:#f8f9ff;border:1px solid #e0e4ea;border-radius:10px;padding:14px;margin-bottom:12px;">
       <div style="font-size:13px;font-weight:700;color:#0f2547;margin-bottom:10px;">[${esc(p.code)}] ${esc(p.name)}</div>
-      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px;">
+      <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:12px;">
         ${[
           {l:"전체주문", v:p.orders.toLocaleString(), u:"건", c:"#5c6bc0"},
           {l:"출고수량", v:p.shipments.toLocaleString(), u:"건", c:"#26a69a"},
-          {l:"품질불만", v:p.complaints.toLocaleString(), u:"건", c:"#ef5350"},
+          {l:"품질불만합계", v:p.complaints.toLocaleString(), u:"건", c:"#ef5350"},
           {l:"품질불만율", v:pctFmt(p.complaintRate), u:"", c:"#ef5350"},
+          {l:"외관불량", v:p.exterior.toLocaleString(), u:"건", c:"#fb8c00"},
         ].map(it=>`<div style="background:#fff;border:1px solid #e0e4ea;border-radius:8px;padding:8px;text-align:center;">
           <div style="font-size:10px;color:#78909c;">${it.l}</div>
-          <div style="font-size:16px;font-weight:700;color:${it.c};">${it.v}<span style="font-size:10px;">${it.u}</span></div>
+          <div style="font-size:15px;font-weight:700;color:${it.c};">${it.v}<span style="font-size:10px;">${it.u}</span></div>
+        </div>`).join("")}
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px;">
+        ${[
+          {l:"사용흔적", v:p.used.toLocaleString(), u:"건", c:"#7b1fa2"},
+          {l:"작동불량", v:p.malfunction.toLocaleString(), u:"건", c:"#d84315"},
+          {l:"상품변질/해동", v:p.spoilage.toLocaleString(), u:"건", c:"#00838f"},
+          {l:"유통기한경과", v:p.expired.toLocaleString(), u:"건", c:"#558b2f"},
+        ].map(it=>`<div style="background:#fff;border:1px solid #e0e4ea;border-radius:8px;padding:8px;text-align:center;">
+          <div style="font-size:10px;color:#78909c;">${it.l}</div>
+          <div style="font-size:15px;font-weight:700;color:${it.c};">${it.v}<span style="font-size:10px;">${it.u}</span></div>
         </div>`).join("")}
       </div>
       ${details.length > 0 ? `
       <div style="font-size:11px;font-weight:600;color:#546e7a;margin-bottom:6px;">불만 유형별 세부 현황</div>
       ${details.map(d=>`
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
-        <div style="width:80px;font-size:11px;color:#546e7a;flex-shrink:0;">${d.label}</div>
+        <div style="width:90px;font-size:11px;color:#546e7a;flex-shrink:0;">${d.label}</div>
         <div style="flex:1;background:#f0f2f5;border-radius:4px;overflow:hidden;height:18px;">
           <div style="height:100%;width:${Math.round(d.count/maxCount*100)}%;background:#ef5350;border-radius:4px;min-width:${d.count>0?4:0}px;"></div>
         </div>
-        <div style="width:90px;font-size:11px;font-weight:700;color:#ef5350;text-align:right;flex-shrink:0;">${d.count}건 (${pctFmt(d.rate)})</div>
+        <div style="width:110px;font-size:11px;font-weight:700;color:#ef5350;text-align:right;flex-shrink:0;">${d.count.toLocaleString()}건 (${pctFmt(d.rate)})</div>
       </div>`).join("")}` : '<div style="font-size:11px;color:#78909c;">세부 불만 유형 데이터 없음</div>'}
     </div>`;
   }).join("");
@@ -1942,10 +2054,11 @@ function generateExcelReport() {
           <div style="font-size:20px;font-weight:700;color:${it.c};">${it.v}<span style="font-size:11px;">${it.u}</span></div>
         </div>`).join("")}
       </div>
-      <div style="font-size:12px;color:#546e7a;">분석 대상 상품: ${products.length}개 · ${products.map(p=>`[${p.code}] ${p.name}`).join(", ")}</div>
+      ${totalTypeBarsHtml}
+      <div style="font-size:12px;color:#546e7a;margin-top:10px;">분석 대상 상품: ${products.length}개 · ${products.map(p=>`[${p.code}] ${p.name}`).join(", ")}</div>
     </div>
 
-    <!-- 상품별 품질 지표 종합 -->
+    <!-- 상품별 품질 지표 세부 -->
     <div style="margin-bottom:20px;">
       <div style="font-size:13px;font-weight:700;color:#0f2547;margin-bottom:10px;padding-bottom:6px;border-bottom:2px solid #e8eaf6;">② 상품별 품질 지표 세부</div>
       ${productDetailHtml}
@@ -1957,19 +2070,16 @@ function generateExcelReport() {
       <div style="font-size:13px;font-weight:700;color:#0f2547;margin-bottom:10px;padding-bottom:6px;border-bottom:2px solid #e8eaf6;">③ 방송별 품질불만 현황</div>
       ${broadcastHtml || '<div style="font-size:12px;color:#78909c;">선택 상품의 방송 데이터가 없습니다.</div>'}
     </div>` : ""}
-
-    ${EQ.returnRows.length > 0 ? `
-    <!-- 반품교환사유 -->
-    <div>
-      <div style="font-size:13px;font-weight:700;color:#0f2547;margin-bottom:10px;padding-bottom:6px;border-bottom:2px solid #e8eaf6;">④ 반품·교환 사유 분석</div>
-      ${returnHtml || '<div style="font-size:12px;color:#78909c;">반품교환사유 데이터가 없습니다.</div>'}
-    </div>` : ""}
   </div>
   `;
 
   const wrap = document.getElementById("excel-report-wrap");
   wrap.style.display = "block";
   wrap.innerHTML = html;
+
+  // 엑셀 리포트 완료 → 종합 결론 분석 버튼 표시
+  document.getElementById("eq-analyze-area").style.display = "block";
+
   wrap.scrollIntoView({behavior:"smooth"});
   showToast("✅ 품질 인사이트 리포트 생성 완료", true);
 }
