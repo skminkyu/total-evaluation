@@ -264,7 +264,7 @@ body{font-family:'Noto Sans KR',sans-serif;background:#f0f2f5;color:#1a1a2e;min-
   <!-- ③ 품질 인사이트 리포트 업로드 -->
   <div class="card">
     <div class="card-title">📊 품질 인사이트 리포트 업로드
-      <span class="ct-badge" style="background:#fff3e0;color:#e65100;">PDF · 필수</span>
+      <span class="ct-badge" style="background:#e3f2fd;color:#1565c0;">선택 사항</span>
     </div>
     <div class="upload-box" id="pdf-upload-box">
       <input type="file" accept=".pdf" id="pdf-input" multiple onchange="handlePDF(this)"/>
@@ -288,6 +288,71 @@ body{font-family:'Noto Sans KR',sans-serif;background:#f0f2f5;color:#1a1a2e;min-
       <div class="upload-filename" id="risk-name"></div>
     </div>
   </div>
+
+  <!-- ④ 엑셀 기반 품질 인사이트 리포트 (선택) -->
+  <div class="card" id="excel-quality-card">
+    <div class="card-title">📈 엑셀 기반 품질 인사이트 리포트
+      <span class="ct-badge" style="background:#e8f5e9;color:#2e7d32;">선택 사항 · 별도 리포트</span>
+    </div>
+    <div style="font-size:11px;color:#546e7a;margin-bottom:12px;">※ 엑셀 파일 3개를 업로드하면 품질 인사이트 리포트를 자동 생성합니다. 종합 등급 평가와 별도로 발행됩니다.</div>
+
+    <!-- 품질불만율 파일 -->
+    <div style="margin-bottom:12px;">
+      <div style="font-size:12px;font-weight:600;color:#0f2547;margin-bottom:6px;">① 품질불만율 파일 <span style="font-size:10px;color:#90a4ae;">(협력사·상품 선택용)</span></div>
+      <div class="upload-box" id="eq-rate-box" style="padding:12px;">
+        <input type="file" accept=".xlsx,.xls" id="eq-rate-input" onchange="handleEqRate(this)"/>
+        <div class="upload-icon" style="font-size:20px;">📊</div>
+        <div class="upload-label" style="font-size:12px;">품질불만율 엑셀 업로드</div>
+        <div class="upload-filename" id="eq-rate-name" style="font-size:11px;margin-top:4px;"></div>
+      </div>
+    </div>
+
+    <!-- 협력사 선택 -->
+    <div id="eq-partner-area" style="display:none;margin-bottom:12px;">
+      <div style="font-size:12px;font-weight:600;color:#0f2547;margin-bottom:6px;">② 협력사 선택</div>
+      <select id="eq-partner-select" style="width:100%;border:1px solid #cfd8dc;border-radius:7px;padding:8px 10px;font-size:13px;font-family:'Noto Sans KR',sans-serif;" onchange="onEqPartnerChange()">
+        <option value="">-- 협력사를 선택하세요 --</option>
+      </select>
+    </div>
+
+    <!-- 상품 선택 -->
+    <div id="eq-product-area" style="display:none;margin-bottom:12px;">
+      <div style="font-size:12px;font-weight:600;color:#0f2547;margin-bottom:6px;">③ 상품 선택 <span style="font-size:10px;color:#90a4ae;">(복수 선택 가능)</span></div>
+      <div id="eq-product-list" style="display:flex;flex-direction:column;gap:4px;max-height:200px;overflow-y:auto;border:1px solid #e0e4ea;border-radius:7px;padding:8px;"></div>
+    </div>
+
+    <!-- 방송실적 + 반품교환사유 파일 -->
+    <div id="eq-detail-area" style="display:none;margin-bottom:12px;">
+      <div style="font-size:12px;font-weight:600;color:#0f2547;margin-bottom:8px;">④ 품질데이터 상세분석 파일 (2개)</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+        <div>
+          <div style="font-size:11px;color:#546e7a;margin-bottom:4px;">방송실적 파일</div>
+          <div class="upload-box" id="eq-broadcast-box" style="padding:10px;">
+            <input type="file" accept=".xlsx,.xls" id="eq-broadcast-input" onchange="handleEqBroadcast(this)"/>
+            <div class="upload-icon" style="font-size:16px;">📡</div>
+            <div class="upload-label" style="font-size:11px;">방송실적 엑셀</div>
+            <div class="upload-filename" id="eq-broadcast-name" style="font-size:10px;margin-top:2px;"></div>
+          </div>
+        </div>
+        <div>
+          <div style="font-size:11px;color:#546e7a;margin-bottom:4px;">반품교환사유 파일</div>
+          <div class="upload-box" id="eq-return-box" style="padding:10px;">
+            <input type="file" accept=".xlsx,.xls" id="eq-return-input" onchange="handleEqReturn(this)"/>
+            <div class="upload-icon" style="font-size:16px;">🔄</div>
+            <div class="upload-label" style="font-size:11px;">반품교환사유 엑셀</div>
+            <div class="upload-filename" id="eq-return-name" style="font-size:10px;margin-top:2px;"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="eq-generate-area" style="display:none;">
+      <button class="btn btn-dark" onclick="generateExcelReport()" id="eq-gen-btn">📋 품질 인사이트 리포트 생성</button>
+    </div>
+  </div>
+
+  <!-- 엑셀 품질 인사이트 리포트 결과 -->
+  <div id="excel-report-wrap" style="display:none;"></div>
 
   <!-- ④ 분석 실행 -->
   <div class="analyze-bar">
@@ -375,6 +440,7 @@ let S = {
   pdfName: null,
   result: null,
   riskRows: [],
+  excelQualityText: null,
 };
 
 /* ════════════════════════════════════════
@@ -649,10 +715,10 @@ async function handleRiskExcel(input) {
    분석 버튼 활성화
 ════════════════════════════════════════ */
 function updateAnalyzeBtn() {
-  const hasPdf = !!(S.pdfBase64 || S.pdfText);
+  const hasPdf = !!(S.pdfBase64 || S.pdfText || S.excelQualityText);
   document.getElementById("btn-analyze").disabled = !hasPdf;
   if (!hasPdf) {
-    document.getElementById("analyze-hint").textContent = "품질 인사이트 리포트 PDF를 업로드하면 분석 버튼이 활성화됩니다.";
+    document.getElementById("analyze-hint").textContent = "품질 인사이트 리포트 PDF 또는 엑셀 품질 데이터를 업로드하면 분석 버튼이 활성화됩니다.";
   } else if (S.selectedMfr) {
     document.getElementById("analyze-hint").textContent = `"${S.selectedMfr}" 제조사 평가 이력 + PDF 종합 분석 준비 완료.`;
   } else {
@@ -1006,7 +1072,7 @@ function getSelectedRecords() {
 }
 
 async function runAnalysis() {
-  if (!S.pdfText) { showToast("품질 인사이트 리포트 PDF를 먼저 업로드해주세요.", false); return; }
+  if (!S.pdfText && !S.excelQualityText) { showToast("품질 인사이트 리포트 PDF 또는 품질 데이터 엑셀 파일을 먼저 업로드해주세요.", false); return; }
   const records = S.selectedMfr ? getSelectedRecords() : [];
 
   document.getElementById("btn-analyze").disabled = true;
@@ -1572,6 +1638,330 @@ function cancelSynthEdit() {
   document.getElementById("synth-btn-edit").style.display = "inline-flex";
   document.getElementById("synth-btn-save").style.display = "none";
   document.getElementById("synth-btn-cancel").style.display = "none";
+}
+
+/* ════════════════════════════════════════
+   엑셀 기반 품질 인사이트 리포트
+════════════════════════════════════════ */
+const EQ = {
+  rateRows: [],      // 품질불만율 파일 파싱 결과
+  broadcastRows: [], // 방송실적
+  returnRows: [],    // 반품교환사유
+  selectedPartner: "",
+  selectedProducts: new Set(),
+};
+
+async function handleEqRate(input) {
+  const file = input.files[0];
+  if (!file) return;
+  document.getElementById("eq-rate-name").textContent = "⏳ 파싱 중...";
+  const buf = await file.arrayBuffer();
+  const wb = XLSX.read(buf, {type:"array"});
+  const ws = wb.Sheets[wb.SheetNames[0]];
+  const rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:""});
+
+  // 협력사 carry-forward, 상품 파싱
+  EQ.rateRows = [];
+  let curPartner = "";
+  for (let i = 1; i < rows.length; i++) {
+    const r = rows[i];
+    const aVal = String(r[0] || "").trim();
+    if (aVal && aVal !== "합계" && aVal !== "협력사") curPartner = aVal;
+    const hVal = String(r[7] || "").trim(); // H열 (0-based index 7)
+    const iVal = String(r[8] || "").trim(); // I열 (0-based index 8)
+    if (!hVal || !iVal || hVal === "상품" || aVal === "합계") continue;
+    // 숫자형 상품코드 확인
+    if (!/^\d+$/.test(hVal)) continue;
+    EQ.rateRows.push({
+      partner: curPartner,
+      code: hVal,
+      name: iVal,
+      orders: Number(r[12] || 0),   // M
+      shipments: Number(r[13] || 0), // N
+      complaints: Number(r[14] || 0),// O
+      complaintRate: Number(r[15] || 0), // P
+      exterior: Number(r[16] || 0),  // Q 외관불량수량
+      exteriorRate: Number(r[17] || 0),
+      used: Number(r[18] || 0),      // S 사용흔적수량
+      usedRate: Number(r[19] || 0),
+      malfunction: Number(r[20] || 0), // U 작동불량수량
+      malfunctionRate: Number(r[21] || 0),
+      spoilage: Number(r[22] || 0),  // W 상품변질수량
+      spoilageRate: Number(r[23] || 0),
+      expired: Number(r[24] || 0),   // Y 유통기한수량
+      expiredRate: Number(r[25] || 0),
+    });
+  }
+
+  // 협력사 드롭다운 채우기
+  const partners = [...new Set(EQ.rateRows.map(r => r.partner).filter(Boolean))].sort();
+  const sel = document.getElementById("eq-partner-select");
+  sel.innerHTML = '<option value="">-- 협력사를 선택하세요 --</option>';
+  partners.forEach(p => {
+    const opt = document.createElement("option");
+    opt.value = p; opt.textContent = p;
+    sel.appendChild(opt);
+  });
+  document.getElementById("eq-partner-area").style.display = "block";
+  document.getElementById("eq-rate-box").classList.add("has-file");
+  document.getElementById("eq-rate-name").textContent = `✅ ${file.name} (${EQ.rateRows.length}개 상품 파싱)`;
+  showToast(`품질불만율 파일 로드 완료 (${EQ.rateRows.length}건)`, true);
+}
+
+function onEqPartnerChange() {
+  EQ.selectedPartner = document.getElementById("eq-partner-select").value;
+  EQ.selectedProducts.clear();
+  const products = EQ.rateRows.filter(r => r.partner === EQ.selectedPartner);
+  const listEl = document.getElementById("eq-product-list");
+  listEl.innerHTML = "";
+  products.forEach(p => {
+    const div = document.createElement("div");
+    div.style.cssText = "display:flex;align-items:flex-start;gap:8px;padding:4px 0;";
+    const cb = document.createElement("input");
+    cb.type = "checkbox"; cb.value = p.code; cb.style.marginTop = "2px";
+    cb.onchange = () => {
+      if (cb.checked) EQ.selectedProducts.add(p.code);
+      else EQ.selectedProducts.delete(p.code);
+      updateEqGenerateBtn();
+    };
+    const label = document.createElement("label");
+    label.style.cssText = "font-size:12px;cursor:pointer;line-height:1.4;";
+    label.textContent = `[${p.code}] ${p.name}`;
+    div.appendChild(cb); div.appendChild(label);
+    listEl.appendChild(div);
+  });
+  document.getElementById("eq-product-area").style.display = products.length ? "block" : "none";
+  document.getElementById("eq-detail-area").style.display = products.length ? "block" : "none";
+  updateEqGenerateBtn();
+}
+
+async function handleEqBroadcast(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const buf = await file.arrayBuffer();
+  const wb = XLSX.read(buf, {type:"array"});
+  const ws = wb.Sheets[wb.SheetNames[0]];
+  const rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:""});
+  EQ.broadcastRows = rows;
+  document.getElementById("eq-broadcast-box").classList.add("has-file");
+  document.getElementById("eq-broadcast-name").textContent = `✅ ${file.name}`;
+  showToast("방송실적 파일 로드 완료", true);
+  updateEqGenerateBtn();
+}
+
+async function handleEqReturn(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const buf = await file.arrayBuffer();
+  const wb = XLSX.read(buf, {type:"array"});
+  const ws = wb.Sheets[wb.SheetNames[0]];
+  const rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:""});
+  EQ.returnRows = rows;
+  document.getElementById("eq-return-box").classList.add("has-file");
+  document.getElementById("eq-return-name").textContent = `✅ ${file.name}`;
+  showToast("반품교환사유 파일 로드 완료", true);
+  updateEqGenerateBtn();
+}
+
+function updateEqGenerateBtn() {
+  const ready = EQ.selectedPartner && EQ.selectedProducts.size > 0;
+  document.getElementById("eq-generate-area").style.display = ready ? "block" : "none";
+}
+
+function pctFmt(v) {
+  if (!v && v !== 0) return "-";
+  return (Number(v) * 100).toFixed(2) + "%";
+}
+
+function generateExcelReport() {
+  const selectedCodes = [...EQ.selectedProducts];
+  const products = EQ.rateRows.filter(r => r.partner === EQ.selectedPartner && selectedCodes.includes(r.code));
+  if (!products.length) { showToast("선택된 상품이 없습니다.", false); return; }
+
+  // 협력사 품질 지표 종합 (선택 상품 합산)
+  const totalOrders = products.reduce((s, p) => s + p.orders, 0);
+  const totalShipments = products.reduce((s, p) => s + p.shipments, 0);
+  const totalComplaints = products.reduce((s, p) => s + p.complaints, 0);
+  const totalComplaintRate = totalShipments > 0 ? totalComplaints / totalShipments : 0;
+
+  // 방송실적 파싱 (선택 상품코드 기준)
+  let broadcastHtml = "";
+  if (EQ.broadcastRows.length > 0) {
+    const bRows = EQ.broadcastRows;
+    // 상품별 방송 데이터 추출 (A열=상품코드, B열=상품명, C열=방송일자)
+    const broadcastByProduct = {};
+    let curCode = "", curName = "";
+    for (let i = 2; i < bRows.length; i++) {
+      const r = bRows[i];
+      const aVal = String(r[0] || "").trim();
+      const bVal = String(r[1] || "").trim();
+      const cVal = String(r[2] || "").trim();
+      if (aVal && /^\d+$/.test(aVal)) { curCode = aVal; curName = bVal; }
+      if (!selectedCodes.includes(curCode)) continue;
+      if (!broadcastByProduct[curCode]) broadcastByProduct[curCode] = {name: curName, rows: []};
+      if (cVal && cVal !== "합계") {
+        broadcastByProduct[curCode].rows.push({
+          date: cVal.slice(0, 10),
+          program: String(r[4] || ""),
+          orders: Number(r[5] || 0),
+          shipments: Number(r[9] || 0),
+          complaints: Number(r[10] || 0),
+          complaintRate: Number(r[11] || 0),
+          productComplaints: Number(r[12] || 0),
+          productComplaintRate: Number(r[13] || 0),
+        });
+      }
+    }
+
+    broadcastHtml = Object.entries(broadcastByProduct).map(([code, data]) => `
+    <div style="margin-bottom:16px;">
+      <div style="font-size:12px;font-weight:700;color:#0f2547;margin-bottom:6px;">[${code}] ${esc(data.name)}</div>
+      <table style="width:100%;border-collapse:collapse;font-size:11px;">
+        <thead><tr style="background:#e8eaf6;">
+          <th style="padding:5px 8px;border:1px solid #c5cae9;text-align:left;">방송일자</th>
+          <th style="padding:5px 8px;border:1px solid #c5cae9;text-align:center;">주문수량</th>
+          <th style="padding:5px 8px;border:1px solid #c5cae9;text-align:center;">출고수량</th>
+          <th style="padding:5px 8px;border:1px solid #c5cae9;text-align:center;">품질불만</th>
+          <th style="padding:5px 8px;border:1px solid #c5cae9;text-align:center;">품질불만율</th>
+          <th style="padding:5px 8px;border:1px solid #c5cae9;text-align:center;">상품불만</th>
+          <th style="padding:5px 8px;border:1px solid #c5cae9;text-align:center;">상품불만율</th>
+        </tr></thead>
+        <tbody>
+          ${data.rows.map((r,i) => `<tr style="${i%2===1?'background:#fafafa':''}">
+            <td style="padding:4px 8px;border:1px solid #e0e4ea;">${esc(r.date)}</td>
+            <td style="padding:4px 8px;border:1px solid #e0e4ea;text-align:center;">${r.orders.toLocaleString()}</td>
+            <td style="padding:4px 8px;border:1px solid #e0e4ea;text-align:center;">${r.shipments.toLocaleString()}</td>
+            <td style="padding:4px 8px;border:1px solid #e0e4ea;text-align:center;">${r.complaints}</td>
+            <td style="padding:4px 8px;border:1px solid #e0e4ea;text-align:center;">${pctFmt(r.complaintRate)}</td>
+            <td style="padding:4px 8px;border:1px solid #e0e4ea;text-align:center;">${r.productComplaints}</td>
+            <td style="padding:4px 8px;border:1px solid #e0e4ea;text-align:center;">${pctFmt(r.productComplaintRate)}</td>
+          </tr>`).join("")}
+        </tbody>
+      </table>
+    </div>`).join("");
+  }
+
+  // 반품교환사유 파싱
+  let returnHtml = "";
+  if (EQ.returnRows.length > 0) {
+    const rRows = EQ.returnRows;
+    // Row 3(index 2) = header, row 4+ = data
+    const dataRows = rRows.slice(3).filter(r => {
+      const e = Number(r[4] || 0);
+      return e > 0;
+    });
+    if (dataRows.length > 0) {
+      returnHtml = `
+      <table style="width:100%;border-collapse:collapse;font-size:11px;">
+        <thead><tr style="background:#e8eaf6;">
+          <th style="padding:5px 8px;border:1px solid #c5cae9;text-align:left;">구분</th>
+          <th style="padding:5px 8px;border:1px solid #c5cae9;text-align:left;">대분류</th>
+          <th style="padding:5px 8px;border:1px solid #c5cae9;text-align:left;">중분류</th>
+          <th style="padding:5px 8px;border:1px solid #c5cae9;text-align:left;">소분류</th>
+          <th style="padding:5px 8px;border:1px solid #c5cae9;text-align:center;">수량</th>
+          <th style="padding:5px 8px;border:1px solid #c5cae9;text-align:center;">상품비중</th>
+        </tr></thead>
+        <tbody>
+          ${dataRows.slice(0, 20).map((r,i) => `<tr style="${i%2===1?'background:#fafafa':''}">
+            <td style="padding:4px 8px;border:1px solid #e0e4ea;">${esc(String(r[0]||""))}</td>
+            <td style="padding:4px 8px;border:1px solid #e0e4ea;">${esc(String(r[1]||""))}</td>
+            <td style="padding:4px 8px;border:1px solid #e0e4ea;">${esc(String(r[2]||""))}</td>
+            <td style="padding:4px 8px;border:1px solid #e0e4ea;">${esc(String(r[3]||""))}</td>
+            <td style="padding:4px 8px;border:1px solid #e0e4ea;text-align:center;">${Number(r[4]||0).toLocaleString()}</td>
+            <td style="padding:4px 8px;border:1px solid #e0e4ea;text-align:center;">${pctFmt(r[5])}</td>
+          </tr>`).join("")}
+        </tbody>
+      </table>`;
+    }
+  }
+
+  // 상품별 품질 지표 세부
+  const productDetailHtml = products.map(p => {
+    const details = [
+      {label:"외관불량", count: p.exterior, rate: p.exteriorRate},
+      {label:"사용흔적", count: p.used, rate: p.usedRate},
+      {label:"작동불량", count: p.malfunction, rate: p.malfunctionRate},
+      {label:"상품변질/해동", count: p.spoilage, rate: p.spoilageRate},
+      {label:"유통기한경과", count: p.expired, rate: p.expiredRate},
+    ].filter(d => d.count > 0);
+    const maxCount = Math.max(...details.map(d => d.count), 1);
+    return `
+    <div style="background:#f8f9ff;border:1px solid #e0e4ea;border-radius:10px;padding:14px;margin-bottom:12px;">
+      <div style="font-size:13px;font-weight:700;color:#0f2547;margin-bottom:10px;">[${esc(p.code)}] ${esc(p.name)}</div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px;">
+        ${[
+          {l:"전체주문", v:p.orders.toLocaleString(), u:"건", c:"#5c6bc0"},
+          {l:"출고수량", v:p.shipments.toLocaleString(), u:"건", c:"#26a69a"},
+          {l:"품질불만", v:p.complaints.toLocaleString(), u:"건", c:"#ef5350"},
+          {l:"품질불만율", v:pctFmt(p.complaintRate), u:"", c:"#ef5350"},
+        ].map(it=>`<div style="background:#fff;border:1px solid #e0e4ea;border-radius:8px;padding:8px;text-align:center;">
+          <div style="font-size:10px;color:#78909c;">${it.l}</div>
+          <div style="font-size:16px;font-weight:700;color:${it.c};">${it.v}<span style="font-size:10px;">${it.u}</span></div>
+        </div>`).join("")}
+      </div>
+      ${details.length > 0 ? `
+      <div style="font-size:11px;font-weight:600;color:#546e7a;margin-bottom:6px;">불만 유형별 세부 현황</div>
+      ${details.map(d=>`
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+        <div style="width:80px;font-size:11px;color:#546e7a;flex-shrink:0;">${d.label}</div>
+        <div style="flex:1;background:#f0f2f5;border-radius:4px;overflow:hidden;height:18px;">
+          <div style="height:100%;width:${Math.round(d.count/maxCount*100)}%;background:#ef5350;border-radius:4px;min-width:${d.count>0?4:0}px;"></div>
+        </div>
+        <div style="width:90px;font-size:11px;font-weight:700;color:#ef5350;text-align:right;flex-shrink:0;">${d.count}건 (${pctFmt(d.rate)})</div>
+      </div>`).join("")}` : '<div style="font-size:11px;color:#78909c;">세부 불만 유형 데이터 없음</div>'}
+    </div>`;
+  }).join("");
+
+  const today = new Date().toLocaleDateString("ko-KR");
+  const html = `
+  <div class="block">
+    <div class="block-head">📈 품질 인사이트 리포트 — ${esc(EQ.selectedPartner)}</div>
+    <p style="font-size:11px;color:#90a4ae;text-align:right;margin-bottom:12px;">발행일: ${today} · SK스토아 품질관리팀</p>
+
+    <!-- 협력사 품질 지표 종합 -->
+    <div style="margin-bottom:20px;">
+      <div style="font-size:13px;font-weight:700;color:#0f2547;margin-bottom:10px;padding-bottom:6px;border-bottom:2px solid #e8eaf6;">① 협력사 품질 지표 종합</div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:10px;">
+        ${[
+          {l:"전체주문수량", v:totalOrders.toLocaleString(), u:"건", c:"#5c6bc0"},
+          {l:"전체출고수량", v:totalShipments.toLocaleString(), u:"건", c:"#26a69a"},
+          {l:"품질불만합계", v:totalComplaints.toLocaleString(), u:"건", c:"#ef5350"},
+          {l:"품질불만율", v:pctFmt(totalComplaintRate), u:"", c:"#ef5350"},
+        ].map(it=>`<div style="background:#f8f9ff;border:1px solid #e0e4ea;border-radius:10px;padding:12px;text-align:center;">
+          <div style="font-size:11px;color:#78909c;margin-bottom:4px;">${it.l}</div>
+          <div style="font-size:20px;font-weight:700;color:${it.c};">${it.v}<span style="font-size:11px;">${it.u}</span></div>
+        </div>`).join("")}
+      </div>
+      <div style="font-size:12px;color:#546e7a;">분석 대상 상품: ${products.length}개 · ${products.map(p=>`[${p.code}] ${p.name}`).join(", ")}</div>
+    </div>
+
+    <!-- 상품별 품질 지표 종합 -->
+    <div style="margin-bottom:20px;">
+      <div style="font-size:13px;font-weight:700;color:#0f2547;margin-bottom:10px;padding-bottom:6px;border-bottom:2px solid #e8eaf6;">② 상품별 품질 지표 세부</div>
+      ${productDetailHtml}
+    </div>
+
+    ${EQ.broadcastRows.length > 0 ? `
+    <!-- 방송별 실적 -->
+    <div style="margin-bottom:20px;">
+      <div style="font-size:13px;font-weight:700;color:#0f2547;margin-bottom:10px;padding-bottom:6px;border-bottom:2px solid #e8eaf6;">③ 방송별 품질불만 현황</div>
+      ${broadcastHtml || '<div style="font-size:12px;color:#78909c;">선택 상품의 방송 데이터가 없습니다.</div>'}
+    </div>` : ""}
+
+    ${EQ.returnRows.length > 0 ? `
+    <!-- 반품교환사유 -->
+    <div>
+      <div style="font-size:13px;font-weight:700;color:#0f2547;margin-bottom:10px;padding-bottom:6px;border-bottom:2px solid #e8eaf6;">④ 반품·교환 사유 분석</div>
+      ${returnHtml || '<div style="font-size:12px;color:#78909c;">반품교환사유 데이터가 없습니다.</div>'}
+    </div>` : ""}
+  </div>
+  `;
+
+  const wrap = document.getElementById("excel-report-wrap");
+  wrap.style.display = "block";
+  wrap.innerHTML = html;
+  wrap.scrollIntoView({behavior:"smooth"});
+  showToast("✅ 품질 인사이트 리포트 생성 완료", true);
 }
 
 function cleanText(s) {
