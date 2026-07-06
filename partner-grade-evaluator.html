@@ -302,6 +302,36 @@ body{font-family:'Noto Sans KR',sans-serif;background:#f0f2f5;color:#1a1a2e;min-
   <!-- 엑셀 품질 인사이트 리포트 결과 (엑셀 카드 바로 아래) -->
   <div id="excel-report-wrap" style="display:none;"></div>
 
+  <!-- 엑셀 리포트 기반 종합 결론 분석 (PDF 카드 위) -->
+  <div id="eq-analyze-area" style="display:none;" class="card">
+    <div class="card-title">🤖 엑셀 데이터 기반 종합 결론 분석
+      <span class="ct-badge" style="background:#e8f5e9;color:#2e7d32;">제조사 평가 이력 연동</span>
+    </div>
+
+    <!-- 품질불만율 목표율 입력 -->
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;padding:10px;background:#fff8e1;border:1px solid #ffe0b2;border-radius:8px;flex-wrap:wrap;">
+      <div style="font-size:12px;font-weight:600;color:#e65100;">품질불만율 목표율</div>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <input type="number" id="eq-target-rate" value="0.5" min="0.01" max="10" step="0.01"
+          style="width:80px;border:1px solid #cfd8dc;border-radius:6px;padding:5px 8px;font-size:13px;font-family:'Noto Sans KR',sans-serif;"/>
+        <span style="font-size:12px;color:#546e7a;">% (S≤목표율 / A≤×1.5 / B≤×2 / C≤×3 / D>×3)</span>
+      </div>
+    </div>
+
+    <!-- 상품별 제조사 + 평가 회차 매핑 -->
+    <div id="eq-mfr-map-area" style="margin-bottom:14px;">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;flex-wrap:wrap;">
+        <div style="font-size:12px;font-weight:600;color:#0f2547;">상품별 제조사 및 평가 회차 매핑</div>
+        <button class="btn btn-dark" style="font-size:11px;padding:4px 12px;" onclick="loadRecordsAndRefreshMap()">🔄 평가 이력 불러오기</button>
+        <span id="load-status" style="font-size:11px;color:#78909c;"></span>
+      </div>
+      <p style="font-size:11px;color:#90a4ae;margin-bottom:8px;">평가이력이 없는 상품은 <b>없음</b>으로 선택 → 품질불만율 100% 기준 적용</p>
+      <div id="eq-mfr-map-list" style="display:flex;flex-direction:column;gap:6px;"></div>
+    </div>
+    <button class="btn btn-dark" onclick="runExcelAnalysis()">🔍 종합 결론 분석 실행</button>
+  </div>
+  <div id="eq-result-wrap" style="display:none;"></div>
+
   <!-- ④ 품질 인사이트 리포트 업로드 (선택) -->
   <div class="card">
     <div class="card-title">📊 품질 인사이트 리포트 업로드
@@ -329,26 +359,6 @@ body{font-family:'Noto Sans KR',sans-serif;background:#f0f2f5;color:#1a1a2e;min-
       <div class="upload-filename" id="risk-name"></div>
     </div>
   </div>
-
-  <!-- 엑셀 리포트 기반 종합 결론 분석 버튼 -->
-  <div id="eq-analyze-area" style="display:none;" class="card">
-    <div class="card-title">🤖 엑셀 데이터 기반 종합 결론 분석
-      <span class="ct-badge" style="background:#e8f5e9;color:#2e7d32;">제조사 평가 이력 연동</span>
-    </div>
-
-    <!-- 상품별 제조사 + 평가 회차 매핑 -->
-    <div id="eq-mfr-map-area" style="margin-bottom:14px;">
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;flex-wrap:wrap;">
-        <div style="font-size:12px;font-weight:600;color:#0f2547;">상품별 제조사 및 평가 회차 매핑</div>
-        <button class="btn btn-dark" style="font-size:11px;padding:4px 12px;" onclick="loadRecordsAndRefreshMap()">🔄 평가 이력 불러오기</button>
-        <span id="load-status" style="font-size:11px;color:#78909c;"></span>
-      </div>
-      <p style="font-size:11px;color:#90a4ae;margin-bottom:8px;">평가이력이 없는 상품은 <b>없음</b>으로 선택 → 품질불만율 100% 기준 적용</p>
-      <div id="eq-mfr-map-list" style="display:flex;flex-direction:column;gap:6px;"></div>
-    </div>
-    <button class="btn btn-dark" onclick="runExcelAnalysis()">🔍 종합 결론 분석 실행</button>
-  </div>
-  <div id="eq-result-wrap" style="display:none;"></div>
 
   <!-- ④ 분석 실행 -->
   <div class="analyze-bar">
@@ -2043,6 +2053,73 @@ function renderEqMfrMap(products) {
   });
 }
 
+// 품질불만율(소수점) → 등급 (목표율 기준)
+function complaintRateToGrade(rate, targetRatePct) {
+  const t = (targetRatePct || 0.5) / 100; // % → 소수
+  if (rate <= t)        return "S";
+  if (rate <= t * 1.5)  return "A";
+  if (rate <= t * 2)    return "B";
+  if (rate <= t * 3)    return "C";
+  return "D";
+}
+
+const gradeToScore = {S:5, A:4, B:3, C:2, D:1};
+const scoreToGradeEq = s => s >= 4.5 ? "S" : s >= 3.5 ? "A" : s >= 2.5 ? "B" : s >= 1.5 ? "C" : "D";
+
+// 상품별 등급 계산 (코드 결정 — AI 비의존)
+function calcProductGrades(products, productMfrMap, productRecordMap, targetRatePct) {
+  return products.map(p => {
+    const mfr = productMfrMap[p.code] || "";
+    const rec = productRecordMap ? productRecordMap[p.code] : null;
+    const mfrGr = rec ? calcGradeForRec(rec) : null;
+    const complaintGr = complaintRateToGrade(p.complaintRate, targetRatePct);
+    let finalGr, formula;
+    if (mfrGr && gradeToScore[mfrGr] !== undefined) {
+      const sc = gradeToScore[mfrGr] * 0.5 + gradeToScore[complaintGr] * 0.5;
+      finalGr = scoreToGradeEq(sc);
+      formula = `제조사 ${mfrGr}(${gradeToScore[mfrGr]}×0.5) + 품질불만율 ${complaintGr}(${gradeToScore[complaintGr]}×0.5) = ${sc.toFixed(1)} → ${finalGr}`;
+    } else {
+      finalGr = complaintGr;
+      formula = `품질불만율 100% → ${complaintGr} (제조사 평가 이력 없음)`;
+    }
+    return { code: p.code, name: p.name, mfr, mfrGr, complaintGr, complaintRate: p.complaintRate, finalGr, formula };
+  });
+}
+
+const gradeColor = {S:"#1565c0", A:"#2e7d32", B:"#f57f17", C:"#e65100", D:"#b71c1c"};
+const gradeBg   = {S:"#e3f2fd", A:"#e8f5e9", B:"#fffde7", C:"#fff3e0", D:"#ffebee"};
+
+function renderProductGradeCards(productGrades, targetRatePct) {
+  if (!productGrades || productGrades.length === 0) return "";
+  const cards = productGrades.map(g => {
+    const fg = gradeColor[g.finalGr] || "#333";
+    const bg = gradeBg[g.finalGr] || "#f5f5f5";
+    const mfrLine = g.mfr
+      ? `<tr><td style="color:#546e7a;padding:3px 0;">제조사</td><td style="padding:3px 0 3px 10px;">${esc(g.mfr)}</td></tr>
+         <tr><td style="color:#546e7a;padding:3px 0;">제조사 평가 등급</td><td style="padding:3px 0 3px 10px;"><strong>${g.mfrGr || "-"}</strong></td></tr>`
+      : `<tr><td style="color:#546e7a;padding:3px 0;">제조사 평가</td><td style="padding:3px 0 3px 10px;color:#999;">이력 없음</td></tr>`;
+    const rateStr = (g.complaintRate * 100).toFixed(3) + "%";
+    return `<div style="border:1px solid #e0e0e0;border-radius:10px;padding:16px 20px;margin-bottom:12px;background:#fff;">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+    <div>
+      <span style="font-size:13px;color:#546e7a;font-weight:500;">[${esc(g.code)}]</span>
+      <span style="font-size:15px;font-weight:700;margin-left:8px;">${esc(g.name)}</span>
+    </div>
+    <div style="background:${bg};color:${fg};font-size:22px;font-weight:900;padding:6px 18px;border-radius:8px;border:2px solid ${fg};">
+      ${g.finalGr}등급
+    </div>
+  </div>
+  <table style="font-size:13px;width:100%;border-collapse:collapse;">
+    ${mfrLine}
+    <tr><td style="color:#546e7a;padding:3px 0;">품질불만율</td><td style="padding:3px 0 3px 10px;">${rateStr} → <strong>${g.complaintGr}등급</strong></td></tr>
+    <tr><td style="color:#546e7a;padding:3px 0;">목표율</td><td style="padding:3px 0 3px 10px;">${targetRatePct}%</td></tr>
+    <tr><td style="color:#546e7a;padding:3px 0;">계산식</td><td style="padding:3px 0 3px 10px;color:#37474f;">${esc(g.formula)}</td></tr>
+  </table>
+</div>`;
+  }).join("");
+  return `<div class="block"><h3 style="font-size:15px;font-weight:700;margin-bottom:12px;">📊 상품별 등급 산출 결과</h3>${cards}</div>`;
+}
+
 async function runExcelAnalysis() {
   // 엑셀 품질 데이터를 텍스트로 직렬화 → S.excelQualityText에 저장 후 종합 분석 실행
   const selectedCodes = [...EQ.selectedProducts];
@@ -2152,26 +2229,36 @@ async function runExcelAnalysis() {
 
   S.excelQualityText = lines.join("\n");
 
-  // 결과 영역 준비
+  // ★ 코드에서 상품별 등급 계산 (AI 비의존)
+  const targetRatePct = parseFloat(document.getElementById("eq-target-rate")?.value || "0.5");
+  const productGrades = calcProductGrades(products, productMfrMap, productRecordMap, targetRatePct);
+
+  // 상품별 등급 정보를 프롬프트에도 전달 (AI가 참조용으로만 사용)
+  lines.push("[★ 시스템 산출 상품별 등급 (코드 계산 결과 — 이 값을 그대로 사용)]");
+  productGrades.forEach(g => {
+    lines.push(`· [${g.code}] ${g.name}: ${g.formula} → 최종등급: ${g.finalGr}`);
+  });
+  S.excelQualityText = lines.join("\n");
+
+  // 결과 영역: 상품별 등급 카드 즉시 표시
   const resultWrap = document.getElementById("eq-result-wrap");
   resultWrap.style.display = "block";
-  resultWrap.innerHTML = `<div class="block"><div style="text-align:center;padding:20px;color:#546e7a;font-size:13px;">⏳ AI 종합 결론 분석 중...</div></div>`;
+  resultWrap.innerHTML = renderProductGradeCards(productGrades, targetRatePct)
+    + `<div class="block"><div style="text-align:center;padding:20px;color:#546e7a;font-size:13px;">⏳ AI 종합 분석 텍스트 생성 중...</div></div>`;
   resultWrap.scrollIntoView({behavior:"smooth"});
 
   try {
     // callClaude에 제조사 평가이력 텍스트 + 엑셀 품질데이터 전달
     const parsed = await callClaudeExcel(mfrEvalText, S.excelQualityText, products, productMfrMap, mfrRecordsMap, productRecordMap);
     S.result = parsed;
-    // eq-result-wrap에 결과 렌더 (allRecords에서 대표 records 구성)
+    // eq-result-wrap에: 상품별 등급 카드 + AI 분석 텍스트
     const representativeRecs = uniqueMfrNames.length > 0 && mfrRecordsMap[uniqueMfrNames[0]]
       ? mfrRecordsMap[uniqueMfrNames[0]] : [];
-    resultWrap.innerHTML = "";
     renderResult(parsed, representativeRecs);
     const rendered = document.getElementById("result-wrap");
-    if (rendered && rendered.innerHTML) {
-      resultWrap.innerHTML = rendered.innerHTML;
-      rendered.style.display = "none";
-    }
+    const aiHtml = rendered?.innerHTML || "";
+    rendered.style.display = "none";
+    resultWrap.innerHTML = renderProductGradeCards(productGrades, targetRatePct) + aiHtml;
     resultWrap.scrollIntoView({behavior:"smooth"});
   } catch (err) {
     const errLines = (err.message || "").split("\n").map(l => esc(l)).join("<br>");
