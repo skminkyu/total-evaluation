@@ -308,16 +308,6 @@ body{font-family:'Noto Sans KR',sans-serif;background:#f0f2f5;color:#1a1a2e;min-
       <span class="ct-badge" style="background:#e8f5e9;color:#2e7d32;">제조사 평가 이력 연동</span>
     </div>
 
-    <!-- 품질불만율 목표율 입력 -->
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;padding:10px;background:#fff8e1;border:1px solid #ffe0b2;border-radius:8px;flex-wrap:wrap;">
-      <div style="font-size:12px;font-weight:600;color:#e65100;">목표율 (기본)</div>
-      <div style="display:flex;align-items:center;gap:6px;flex:1;flex-wrap:wrap;">
-        <input type="number" id="eq-target-rate" value="0.5" min="0.01" max="10" step="0.01"
-          style="width:80px;border:1px solid #cfd8dc;border-radius:6px;padding:5px 8px;font-size:13px;font-family:'Noto Sans KR',sans-serif;"/>
-        <span style="font-size:12px;color:#546e7a;">% · 카테고리 미감지 상품에 적용</span>
-      </div>
-    </div>
-
     <!-- 상품별 제조사 + 평가 회차 매핑 -->
     <div id="eq-mfr-map-area" style="margin-bottom:14px;">
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;flex-wrap:wrap;">
@@ -1990,7 +1980,7 @@ function renderEqMfrMap(products) {
   const mapList = document.getElementById("eq-mfr-map-list");
   mapList.innerHTML = "";
   const mfrNames = [...new Set(S.allRecords.map(r => r.header?.업소명).filter(Boolean))].sort();
-  const defaultRate = parseFloat(document.getElementById("eq-target-rate")?.value || "0.5");
+  const defaultRate = 0.5;
 
   products.forEach(p => {
     const wrap = document.createElement("div");
@@ -2355,7 +2345,7 @@ async function runExcelAnalysis() {
 
   // ★ 코드에서 상품별 등급 계산 (AI 비의존)
   // 상품별 목표율 입력값 읽기 (eq-rate-{code} 입력창 우선, 없으면 기본값)
-  const defaultRatePct = parseFloat(document.getElementById("eq-target-rate")?.value || "0.5");
+  const defaultRatePct = 0.5; // 카테고리 미감지·수기 미입력 상품 폴백
   const productsWithRate = products.map(p => {
     const el = document.getElementById(`eq-rate-${p.code}`);
     const overrideRate = el ? parseFloat(el.value) : NaN;
@@ -2388,7 +2378,7 @@ async function runExcelAnalysis() {
     const rendered = document.getElementById("result-wrap");
     const aiHtml = rendered?.innerHTML || "";
     rendered.style.display = "none";
-    resultWrap.innerHTML = renderProductGradeCards(productGrades, targetRatePct) + aiHtml;
+    resultWrap.innerHTML = renderProductGradeCards(productGrades, defaultRatePct) + aiHtml;
     resultWrap.scrollIntoView({behavior:"smooth"});
   } catch (err) {
     const errLines = (err.message || "").split("\n").map(l => esc(l)).join("<br>");
