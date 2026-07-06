@@ -310,11 +310,11 @@ body{font-family:'Noto Sans KR',sans-serif;background:#f0f2f5;color:#1a1a2e;min-
 
     <!-- 품질불만율 목표율 입력 -->
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;padding:10px;background:#fff8e1;border:1px solid #ffe0b2;border-radius:8px;flex-wrap:wrap;">
-      <div style="font-size:12px;font-weight:600;color:#e65100;">품질불만율 목표율</div>
+      <div style="font-size:12px;font-weight:600;color:#e65100;">기본 목표율</div>
       <div style="display:flex;align-items:center;gap:6px;">
         <input type="number" id="eq-target-rate" value="0.5" min="0.01" max="10" step="0.01"
           style="width:80px;border:1px solid #cfd8dc;border-radius:6px;padding:5px 8px;font-size:13px;font-family:'Noto Sans KR',sans-serif;"/>
-        <span style="font-size:12px;color:#546e7a;">% (S≤목표율 / A≤×1.5 / B≤×2 / C≤×3 / D>×3)</span>
+        <span style="font-size:12px;color:#546e7a;">% (카테고리 미감지 시 적용 · 26년 카테고리별 목표율 자동 반영)</span>
       </div>
     </div>
 
@@ -1865,6 +1865,8 @@ async function handleEqRate(input) {
       partner: curPartner,
       code: hVal,
       name: iVal,
+      majorCat: String(r[1] || "").trim(),  // B열: 대분류코드
+      subCat: String(r[3] || "").trim(),     // D열: 중분류코드
       orders: Number(r[12] || 0),   // M
       shipments: Number(r[13] || 0), // N
       complaints: Number(r[14] || 0),// O
@@ -2066,12 +2068,37 @@ function complaintRateToGrade(rate, targetRatePct) {
 const gradeToScore = {S:5, A:4, B:3, C:2, D:1};
 const scoreToGradeEq = s => s >= 4.5 ? "S" : s >= 3.5 ? "A" : s >= 2.5 ? "B" : s >= 1.5 ? "C" : "D";
 
+// 2026년 카테고리별 품질불만 목표율 (대분류코드_중분류코드 → %)
+const CAT_TARGET_RATE = {
+  "10_01":0.48,"10_02":0.82,"10_03":0.48,
+  "15_01":0.10,"15_02":0.06,"15_03":0.26,"15_05":0.73,"15_06":0.36,
+  "20_01":0.71,"20_02":3.24,"20_03":1.17,"20_05":1.17,"20_06":1.27,
+  "30_01":1.24,"30_02":0.14,
+  "35_01":0.70,"35_02":0.42,
+  "45_01":0.58,
+  "50_01":0.72,"50_02":0.21,"50_03":0.10,"50_04":0.57,"50_05":0.05,
+  "60_01":0.05,"60_02":0.06,"60_03":0.26,
+  "65_01":0.47,"65_02":0.90,
+  "70_01":1.42,"70_02":0.30,
+};
+
+function getProductTargetRate(product, defaultRatePct) {
+  if (product.majorCat && product.subCat) {
+    const maj = String(product.majorCat).padStart(2,"0");
+    const sub = String(product.subCat).padStart(2,"0");
+    const key = `${maj}_${sub}`;
+    if (CAT_TARGET_RATE[key] !== undefined) return CAT_TARGET_RATE[key];
+  }
+  return defaultRatePct || 0.5;
+}
+
 // 상품별 등급 계산 (코드 결정 — AI 비의존)
-function calcProductGrades(products, productMfrMap, productRecordMap, targetRatePct) {
+function calcProductGrades(products, productMfrMap, productRecordMap, defaultRatePct) {
   return products.map(p => {
     const mfr = productMfrMap[p.code] || "";
     const rec = productRecordMap ? productRecordMap[p.code] : null;
     const mfrGr = rec ? calcGradeForRec(rec) : null;
+    const targetRatePct = getProductTargetRate(p, defaultRatePct);
     const complaintGr = complaintRateToGrade(p.complaintRate, targetRatePct);
     let finalGr, formula;
     if (mfrGr && gradeToScore[mfrGr] !== undefined) {
@@ -2082,7 +2109,7 @@ function calcProductGrades(products, productMfrMap, productRecordMap, targetRate
       finalGr = complaintGr;
       formula = `품질불만율 100% → ${complaintGr} (제조사 평가 이력 없음)`;
     }
-    return { code: p.code, name: p.name, mfr, mfrGr, complaintGr, complaintRate: p.complaintRate, finalGr, formula };
+    return { code: p.code, name: p.name, mfr, mfrGr, complaintGr, complaintRate: p.complaintRate, targetRatePct, majorCat: p.majorCat, subCat: p.subCat, finalGr, formula };
   });
 }
 
@@ -2112,7 +2139,7 @@ function renderProductGradeCards(productGrades, targetRatePct) {
   <table style="font-size:13px;width:100%;border-collapse:collapse;">
     ${mfrLine}
     <tr><td style="color:#546e7a;padding:3px 0;">품질불만율</td><td style="padding:3px 0 3px 10px;">${rateStr} → <strong>${g.complaintGr}등급</strong></td></tr>
-    <tr><td style="color:#546e7a;padding:3px 0;">목표율</td><td style="padding:3px 0 3px 10px;">${targetRatePct}%</td></tr>
+    <tr><td style="color:#546e7a;padding:3px 0;">목표율</td><td style="padding:3px 0 3px 10px;">${g.targetRatePct}%${g.majorCat ? ` <span style="color:#90a4ae;font-size:11px;">(대${String(g.majorCat).padStart(2,"0")}-중${String(g.subCat||"").padStart(2,"0")})</span>` : ""}</td></tr>
     <tr><td style="color:#546e7a;padding:3px 0;">계산식</td><td style="padding:3px 0 3px 10px;color:#37474f;">${esc(g.formula)}</td></tr>
   </table>
 </div>`;
