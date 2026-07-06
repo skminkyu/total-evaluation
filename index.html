@@ -239,60 +239,10 @@ body{font-family:'Noto Sans KR',sans-serif;background:#f0f2f5;color:#1a1a2e;min-
     </div>
   </div>
 
-  <!-- ② 제조사 평가 이력 로드 -->
-  <div class="card">
-    <div class="card-title">🏭 제조사 평가 이력 로드
-      <span class="ct-badge">JSONBin · 체크리스트 동일 저장소</span>
-      <span class="ct-badge" style="background:#e3f2fd;color:#1565c0;">선택 사항 — 패션 카테고리 및 제조사 평가 면제시</span>
-    </div>
-    <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px;flex-wrap:wrap;">
-      <button class="btn btn-dark" onclick="loadRecords()">🔄 이력 불러오기</button>
-      <span id="load-status" style="font-size:11px;color:#78909c;">버튼을 눌러 평가 이력을 불러오세요</span>
-    </div>
-    <!-- 카테고리 필터 -->
-    <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;" id="cat-filter-row" style="display:none;">
-      <button class="btn-sm btn-blue-sm cat-filter active" data-cat="all" onclick="setCatFilter('all',this)">전체</button>
-      <button class="btn-sm btn-blue-sm cat-filter" data-cat="cgmp" onclick="setCatFilter('cgmp',this)">💄 화장품 (CGMP)</button>
-      <button class="btn-sm btn-blue-sm cat-filter" data-cat="haccp_g" onclick="setCatFilter('haccp_g',this)">🍱 식품 제조·가공업</button>
-      <button class="btn-sm btn-blue-sm cat-filter" data-cat="haccp_s" onclick="setCatFilter('haccp_s',this)">🥘 농·축·수산물</button>
-    </div>
-    <div id="mfr-list-area">
-      <div class="mfr-empty">📭 아직 불러온 이력이 없습니다.</div>
-    </div>
-  </div>
-
-  <!-- ③ 품질 인사이트 리포트 업로드 -->
-  <div class="card">
-    <div class="card-title">📊 품질 인사이트 리포트 업로드
-      <span class="ct-badge" style="background:#e3f2fd;color:#1565c0;">선택 사항 — 엑셀 리포트 없을 경우 필수</span>
-    </div>
-    <div class="upload-box" id="pdf-upload-box">
-      <input type="file" accept=".pdf" id="pdf-input" multiple onchange="handlePDF(this)"/>
-      <div class="upload-icon">📄</div>
-      <div class="upload-label">품질 인사이트 리포트 PDF</div>
-      <div class="upload-sub">복수 파일 선택 가능 (Ctrl/Cmd+클릭) · PDF 필수</div>
-      <div class="upload-filename" id="pdf-name"></div>
-    </div>
-  </div>
-
-  <!-- ③ Risk History 업로드 (선택) -->
-  <div class="card">
-    <div class="card-title">📑 Risk History 업로드
-      <span class="ct-badge" style="background:#e3f2fd;color:#1565c0;">선택 사항</span>
-    </div>
-    <div class="upload-box" id="risk-upload-box">
-      <input type="file" accept=".xlsx,.xls" id="risk-input" onchange="handleRiskExcel(this)"/>
-      <div class="upload-icon">📊</div>
-      <div class="upload-label">Risk History Excel 파일</div>
-      <div class="upload-sub">manageGoodsRiskHistory 파일을 선택하세요 (선택)</div>
-      <div class="upload-filename" id="risk-name"></div>
-    </div>
-  </div>
-
-  <!-- ④ 엑셀 기반 품질 인사이트 리포트 (선택) -->
+  <!-- ③ 엑셀 기반 품질 인사이트 리포트 -->
   <div class="card" id="excel-quality-card">
     <div class="card-title">📈 엑셀 기반 품질 인사이트 리포트
-      <span class="ct-badge" style="background:#e8f5e9;color:#2e7d32;">선택 사항 · 별도 리포트</span>
+      <span class="ct-badge" style="background:#fce4ec;color:#c62828;">필수</span>
     </div>
     <div style="font-size:11px;color:#546e7a;margin-bottom:12px;">※ 엑셀 파일 3개를 업로드하면 품질 인사이트 리포트를 자동 생성합니다. 종합 등급 평가와 별도로 발행됩니다.</div>
 
@@ -349,6 +299,34 @@ body{font-family:'Noto Sans KR',sans-serif;background:#f0f2f5;color:#1a1a2e;min-
     </div>
   </div>
 
+  <!-- ④ 품질 인사이트 리포트 업로드 (선택) -->
+  <div class="card">
+    <div class="card-title">📊 품질 인사이트 리포트 업로드
+      <span class="ct-badge" style="background:#e3f2fd;color:#1565c0;">선택 사항</span>
+    </div>
+    <div class="upload-box" id="pdf-upload-box">
+      <input type="file" accept=".pdf" id="pdf-input" multiple onchange="handlePDF(this)"/>
+      <div class="upload-icon">📄</div>
+      <div class="upload-label">품질 인사이트 리포트 PDF</div>
+      <div class="upload-sub">복수 파일 선택 가능 (Ctrl/Cmd+클릭) · PDF 필수</div>
+      <div class="upload-filename" id="pdf-name"></div>
+    </div>
+  </div>
+
+  <!-- ④ Risk History 업로드 (선택) -->
+  <div class="card">
+    <div class="card-title">📑 Risk History 업로드
+      <span class="ct-badge" style="background:#e3f2fd;color:#1565c0;">선택 사항</span>
+    </div>
+    <div class="upload-box" id="risk-upload-box">
+      <input type="file" accept=".xlsx,.xls" id="risk-input" onchange="handleRiskExcel(this)"/>
+      <div class="upload-icon">📊</div>
+      <div class="upload-label">Risk History Excel 파일</div>
+      <div class="upload-sub">manageGoodsRiskHistory 파일을 선택하세요 (선택)</div>
+      <div class="upload-filename" id="risk-name"></div>
+    </div>
+  </div>
+
   <!-- 엑셀 품질 인사이트 리포트 결과 -->
   <div id="excel-report-wrap" style="display:none;"></div>
 
@@ -357,10 +335,34 @@ body{font-family:'Noto Sans KR',sans-serif;background:#f0f2f5;color:#1a1a2e;min-
     <div class="card-title">🤖 엑셀 데이터 기반 종합 결론 분석
       <span class="ct-badge" style="background:#e8f5e9;color:#2e7d32;">제조사 평가 이력 연동</span>
     </div>
-    <p style="font-size:12px;color:#546e7a;margin-bottom:10px;">상품별 제조사를 지정하면, 로드된 제조사 평가 이력과 연결하여 종합 분석합니다. 제조사 평가 이력이 없는 상품은 <b>없음</b>으로 선택하세요.</p>
-    <!-- 상품별 제조사 매핑 -->
+
+    <!-- 제조사 평가 이력 로드 (통합) -->
+    <div style="margin-bottom:16px;padding:12px;background:#f8f9ff;border:1px solid #e0e4ea;border-radius:9px;">
+      <div style="font-size:12px;font-weight:600;color:#0f2547;margin-bottom:8px;">① 제조사 평가 이력 로드
+        <span class="ct-badge" style="background:#e3f2fd;color:#1565c0;">JSONBin · 체크리스트 동일 저장소</span>
+        <span class="ct-badge" style="background:#e3f2fd;color:#1565c0;">선택 사항 — 패션 카테고리 및 제조사 평가 면제시</span>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap;">
+        <button class="btn btn-dark" onclick="loadRecords()">🔄 이력 불러오기</button>
+        <span id="load-status" style="font-size:11px;color:#78909c;">버튼을 눌러 평가 이력을 불러오세요</span>
+      </div>
+      <!-- 카테고리 필터 -->
+      <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;" id="cat-filter-row">
+        <button class="btn-sm btn-blue-sm cat-filter active" data-cat="all" onclick="setCatFilter('all',this)">전체</button>
+        <button class="btn-sm btn-blue-sm cat-filter" data-cat="cgmp" onclick="setCatFilter('cgmp',this)">💄 화장품 (CGMP)</button>
+        <button class="btn-sm btn-blue-sm cat-filter" data-cat="haccp_g" onclick="setCatFilter('haccp_g',this)">🍱 식품 제조·가공업</button>
+        <button class="btn-sm btn-blue-sm cat-filter" data-cat="haccp_s" onclick="setCatFilter('haccp_s',this)">🥘 농·축·수산물</button>
+      </div>
+      <div id="mfr-list-area">
+        <div class="mfr-empty">📭 아직 불러온 이력이 없습니다.</div>
+      </div>
+    </div>
+
+    <!-- 상품별 제조사 + 평가 회차 매핑 -->
     <div id="eq-mfr-map-area" style="margin-bottom:14px;">
-      <div style="font-size:12px;font-weight:600;color:#0f2547;margin-bottom:8px;">상품별 제조사 매핑 <span style="font-weight:400;color:#90a4ae;">(제조사 평가 이력 로드 시 활성화)</span></div>
+      <div style="font-size:12px;font-weight:600;color:#0f2547;margin-bottom:8px;">② 상품별 제조사 및 평가 회차 매핑
+        <span style="font-weight:400;color:#90a4ae;">(제조사 평가 이력 로드 시 활성화 · 평가이력 없는 상품은 없음 선택)</span>
+      </div>
       <div id="eq-mfr-map-list" style="display:flex;flex-direction:column;gap:6px;"></div>
     </div>
     <button class="btn btn-dark" onclick="runExcelAnalysis()">🔍 종합 결론 분석 실행</button>
@@ -603,7 +605,7 @@ function renderMfrList() {
     const cats = [...new Set(g.records.map(r => TYPE_ICONS[r.clType] || ""))].join(" ");
     const isSelected = S.selectedMfr === g.name;
     const grades = g.records.map(r => {
-      const gr = calcGrade(r.earned, r.total, r.clType);
+      const gr = calcGradeForRec(r);
       return `<div class="grade-chip g${gr.toLowerCase()}">${gr}</div>`;
     }).slice(0, 4).join("");
     const latestDate = latestRec.header?.심사일자 || "-";
@@ -633,7 +635,7 @@ function renderMfrList() {
 
 function renderHistoryRow(records) {
   const chips = records.map(rec => {
-    const gr = calcGrade(rec.earned, rec.total, rec.clType);
+    const gr = calcGradeForRec(rec);
     const isSelected = S.selectedRecIds.includes(String(rec.id));
     const label = `${rec.header?.심사일자 || "?"} ${TYPE_ICONS[rec.clType]||""} ${gr}등급`;
     return `<span class="hist-chip ${isSelected ? "selected" : ""}" data-rec-id="${esc(String(rec.id))}">${label}</span>`;
@@ -761,6 +763,16 @@ function calcGrade(earned, total, type) {
   }
   const p = (earned / total) * 100;
   if (p >= 90) return "A"; if (p >= 80) return "B"; if (p >= 70) return "C"; return "D";
+}
+
+function calcGradeForRec(rec) {
+  if (!rec) return "-";
+  if (rec.clType === "haccp_g" && rec.header?.점수입력모드 === "수기입력") {
+    const pct = parseFloat(rec.header.수기입력점수 || rec.earned || 0);
+    if (pct >= 90) return "S"; if (pct >= 80) return "A";
+    if (pct >= 70) return "B"; if (pct >= 60) return "C"; return "D";
+  }
+  return calcGrade(rec.earned, rec.total, rec.clType);
 }
 
 function judgeStr(earned, total, type) {
@@ -1472,7 +1484,7 @@ function renderResult(d, records) {
 
   /* 이력 타임라인 */
   const timelineHtml = records.map(rec => {
-    const gr = calcGrade(rec.earned, rec.total, rec.clType);
+    const gr = calcGradeForRec(rec);
     const jd = rec.header?.적합여부 || judgeStr(rec.earned, rec.total, rec.clType);
     const dotColor = gr === "S" ? "#7B1FA2" : gr === "A" ? "#1565c0" : gr === "B" ? "#2e7d32" : gr === "C" ? "#f57f17" : "#c62828";
     return `<div class="tl-item">
