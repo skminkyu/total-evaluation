@@ -830,13 +830,17 @@ function formatRecordsForAI(records) {
 
   sorted.forEach((rec, i) => {
     const typeName = CAT_NAMES[rec.clType] || rec.clType;
-    const gr = calcGrade(rec.earned, rec.total, rec.clType);
+    const gr = calcGradeForRec(rec);
     const jd = rec.header?.적합여부 || judgeStr(rec.earned, rec.total, rec.clType);
     text += `━━━ 평가 ${i+1}회차 (${rec.header?.심사일자 || "-"}) ━━━\n`;
     text += `업소명: ${rec.header?.업소명 || "-"}\n`;
     text += `평가유형: ${typeName} (${rec.header?.평가유형서브 || ""})\n`;
     text += `심사일자: ${rec.header?.심사일자 || "-"} / 심사자: ${rec.header?.심사자 || "-"}\n`;
-    text += `총점: ${rec.earned}/${rec.total}점 (${pctStr(rec.earned, rec.total)}%) / 등급: ${gr} / 적합여부: ${jd}\n`;
+    const isManualRec = rec.clType === "haccp_g" && rec.header?.점수입력모드 === "수기입력";
+    const scoreInfo = isManualRec
+      ? `수기입력 ${parseFloat(rec.header.수기입력점수||0)}%`
+      : `총점: ${rec.earned}/${rec.total}점 (${pctStr(rec.earned, rec.total)}%)`;
+    text += `${scoreInfo} / 등급: ${gr} / 적합여부: ${jd}\n`;
 
     const issues = [];
     if (rec.J) {
@@ -888,15 +892,16 @@ function formatRecordsForAI(records) {
 ════════════════════════════════════════ */
 // 엑셀 기반 종합 결론 분석 전용 Claude 호출
 // products: 선택 상품 배열, productMfrMap: {code → 업소명}, mfrRecordsMap: {업소명 → records[]}
-async function callClaudeExcel(mfrEvalText, excelQualityText, products, productMfrMap, mfrRecordsMap) {
+async function callClaudeExcel(mfrEvalText, excelQualityText, products, productMfrMap, mfrRecordsMap, productRecordMap) {
   const apiKey = getClaudeKey();
   if (!apiKey) throw new Error("Claude API 키가 설정되지 않았습니다. ⚙️ 설정에서 입력해주세요.");
 
   // 상품별 제조사 현황 요약
   const productMfrSummary = products.map(p => {
     const mfr = productMfrMap[p.code] || "";
-    const recs = mfr ? (mfrRecordsMap[mfr] || []) : [];
-    return `· [${p.code}] ${p.name}: 제조사=${mfr || "미지정"}, 평가이력=${recs.length > 0 ? `${recs.length}건 있음` : "없음"}`;
+    const selRec = productRecordMap ? productRecordMap[p.code] : null;
+    const recInfo = selRec ? `${selRec.header?.심사일자||"?"} (${calcGradeForRec(selRec)}등급)` : "없음";
+    return `· [${p.code}] ${p.name}: 제조사=${mfr || "미지정"}, 선택 평가이력=${recInfo}`;
   }).join("\n");
 
   const hasSomeMfrEval = Object.values(productMfrMap).some(m => m && mfrRecordsMap[m]?.length > 0);
@@ -929,7 +934,7 @@ ${productMfrSummary}
 - 평가 이력이 있는 상품: 제조사 현장 부적합 항목과 품질불만의 연관성을 구체적으로 서술.
 - 평가 이력이 없는 상품: "제조사 현장 평가 이력 없음 — 품질불만율 데이터만으로 분석" 명시.
 - 모든 상품을 빠짐없이 분석하고 각 상품명을 명시하세요.
-- 종합 등급은 ${hasSomeMfrEval && !hasNoMfrEval ? "제조사 평가 50% + 품질불만율 50% 기준" : hasSomeMfrEval ? "일부 상품은 제조사 평가+품질불만율 혼합, 이력 없는 상품은 품질불만율 100% 기준으로 가중 평균" : "품질불만율 100% 기준 (제조사 평가 이력 없음)"}으로 산정하세요.
+- 종합 등급은 ${!hasSomeMfrEval ? "품질불만율 100% 기준 (제조사 평가 이력 없음)" : !hasNoMfrEval ? "제조사 현장 평가 50% + 품질불만율 50% 가중평균" : "제조사 평가 이력 있는 상품: (제조사 50% + 품질불만율 50%), 이력 없는 상품: 품질불만율 100%"}으로 산정하세요.
 
 [자료 1: 엑셀 기반 품질 인사이트 데이터]
 ${excelQualityText}
@@ -1975,32 +1980,76 @@ function renderEqMfrMap(products) {
   const hasRecords = mfrNames.length > 0;
 
   products.forEach(p => {
-    const row = document.createElement("div");
-    row.style.cssText = "display:flex;align-items:center;gap:10px;padding:6px 10px;background:#f8f9ff;border:1px solid #e0e4ea;border-radius:8px;";
+    const wrap = document.createElement("div");
+    wrap.style.cssText = "padding:8px 10px;background:#f8f9ff;border:1px solid #e0e4ea;border-radius:8px;";
+
+    const row1 = document.createElement("div");
+    row1.style.cssText = "display:flex;align-items:center;gap:10px;margin-bottom:4px;";
 
     const nameSpan = document.createElement("div");
-    nameSpan.style.cssText = "flex:1;font-size:12px;color:#0f2547;";
+    nameSpan.style.cssText = "flex:1;font-size:12px;font-weight:600;color:#0f2547;";
     nameSpan.textContent = `[${p.code}] ${p.name}`;
 
-    const sel = document.createElement("select");
-    sel.id = `eq-mfr-sel-${p.code}`;
-    sel.style.cssText = "width:220px;border:1px solid #cfd8dc;border-radius:6px;padding:5px 8px;font-size:12px;font-family:'Noto Sans KR',sans-serif;";
+    const mfrSel = document.createElement("select");
+    mfrSel.id = `eq-mfr-sel-${p.code}`;
+    mfrSel.style.cssText = "width:220px;border:1px solid #cfd8dc;border-radius:6px;padding:5px 8px;font-size:12px;font-family:'Noto Sans KR',sans-serif;";
 
     const noneOpt = document.createElement("option");
     noneOpt.value = ""; noneOpt.textContent = hasRecords ? "없음 (제조사 평가 이력 없음)" : "— 제조사 평가 이력 미로드 —";
-    sel.appendChild(noneOpt);
+    mfrSel.appendChild(noneOpt);
 
     if (hasRecords) {
       mfrNames.forEach(name => {
         const opt = document.createElement("option");
         opt.value = name; opt.textContent = name;
-        sel.appendChild(opt);
+        mfrSel.appendChild(opt);
       });
     }
 
-    row.appendChild(nameSpan);
-    row.appendChild(sel);
-    mapList.appendChild(row);
+    // Record selector (hidden until manufacturer chosen)
+    const recRow = document.createElement("div");
+    recRow.style.cssText = "display:none;margin-top:4px;";
+    const recSel = document.createElement("select");
+    recSel.id = `eq-rec-sel-${p.code}`;
+    recSel.style.cssText = "width:100%;border:1px solid #cfd8dc;border-radius:6px;padding:5px 8px;font-size:11px;font-family:'Noto Sans KR',sans-serif;";
+    recRow.appendChild(document.createTextNode("평가 회차 선택: "));
+    recRow.appendChild(recSel);
+
+    mfrSel.onchange = () => {
+      const selectedMfr = mfrSel.value;
+      const recs = selectedMfr
+        ? S.allRecords.filter(r => (r.header?.업소명||"") === selectedMfr)
+            .sort((a,b) => (b.header?.심사일자||"").localeCompare(a.header?.심사일자||""))
+        : [];
+      recSel.innerHTML = "";
+      if (recs.length === 0) {
+        recRow.style.display = "none";
+        return;
+      }
+      if (recs.length === 1) {
+        const opt = document.createElement("option");
+        opt.value = "0"; opt.textContent = `${recs[0].header?.심사일자||"?"} — 최신`;
+        recSel.appendChild(opt);
+        recRow.style.display = "none"; // only one record, no need to show selector
+        return;
+      }
+      // Multiple records — show selector
+      recs.forEach((r, i) => {
+        const opt = document.createElement("option");
+        opt.value = String(i);
+        const gr = calcGradeForRec(r);
+        opt.textContent = `${r.header?.심사일자||"?"} (${gr}등급)${i===0?" — 최신":""}`;
+        if (i === 0) opt.selected = true;
+        recSel.appendChild(opt);
+      });
+      recRow.style.display = "block";
+    };
+
+    row1.appendChild(nameSpan);
+    row1.appendChild(mfrSel);
+    wrap.appendChild(row1);
+    wrap.appendChild(recRow);
+    mapList.appendChild(wrap);
   });
 }
 
@@ -2052,20 +2101,39 @@ async function runExcelAnalysis() {
     lines.push("");
   }
 
-  // 상품별 제조사 매핑 읽기
+  // 상품별 제조사 매핑 및 선택 회차 읽기
   const productMfrMap = {}; // code → 업소명 or ""
+  const productRecordMap = {}; // code → selected record (single)
   products.forEach(p => {
-    const sel = document.getElementById(`eq-mfr-sel-${p.code}`);
-    productMfrMap[p.code] = sel ? sel.value : "";
+    const mfrSel = document.getElementById(`eq-mfr-sel-${p.code}`);
+    const recSel = document.getElementById(`eq-rec-sel-${p.code}`);
+    const mfrName = mfrSel ? mfrSel.value : "";
+    productMfrMap[p.code] = mfrName;
+    if (mfrName) {
+      const recs = S.allRecords
+        .filter(r => (r.header?.업소명||"") === mfrName)
+        .sort((a,b) => (b.header?.심사일자||"").localeCompare(a.header?.심사일자||""));
+      const idx = recSel ? (parseInt(recSel.value)||0) : 0;
+      productRecordMap[p.code] = recs[idx] || recs[0] || null;
+    } else {
+      productRecordMap[p.code] = null;
+    }
   });
 
-  // 상품별 제조사 평가 이력 구성
+  // 상품별 선택 레코드 기반으로 mfrRecordsMap 구성 (1 record per mfr for this analysis)
   const uniqueMfrNames = [...new Set(Object.values(productMfrMap).filter(Boolean))];
-  const mfrRecordsMap = {}; // 업소명 → records[]
+  const mfrRecordsMap = {}; // 업소명 → [selectedRecord]
   uniqueMfrNames.forEach(mfrName => {
-    mfrRecordsMap[mfrName] = S.allRecords
-      .filter(r => (r.header?.업소명 || "") === mfrName)
-      .sort((a, b) => (a.header?.심사일자||"").localeCompare(b.header?.심사일자||""));
+    const recs = products
+      .filter(p => productMfrMap[p.code] === mfrName && productRecordMap[p.code])
+      .map(p => productRecordMap[p.code]);
+    // dedupe by record id
+    const seen = new Set();
+    mfrRecordsMap[mfrName] = recs.filter(r => {
+      const k = r.id || r.header?.심사일자;
+      if (seen.has(k)) return false;
+      seen.add(k); return true;
+    });
   });
 
   // 상품별 제조사 연결 정보를 lines에 추가
@@ -2102,7 +2170,7 @@ async function runExcelAnalysis() {
 
   try {
     // callClaude에 제조사 평가이력 텍스트 + 엑셀 품질데이터 전달
-    const parsed = await callClaudeExcel(mfrEvalText, S.excelQualityText, products, productMfrMap, mfrRecordsMap);
+    const parsed = await callClaudeExcel(mfrEvalText, S.excelQualityText, products, productMfrMap, mfrRecordsMap, productRecordMap);
     S.result = parsed;
     // eq-result-wrap에 결과 렌더 (allRecords에서 대표 records 구성)
     const representativeRecs = uniqueMfrNames.length > 0 && mfrRecordsMap[uniqueMfrNames[0]]
