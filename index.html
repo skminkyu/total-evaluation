@@ -310,11 +310,11 @@ body{font-family:'Noto Sans KR',sans-serif;background:#f0f2f5;color:#1a1a2e;min-
 
     <!-- 품질불만율 목표율 입력 -->
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;padding:10px;background:#fff8e1;border:1px solid #ffe0b2;border-radius:8px;flex-wrap:wrap;">
-      <div style="font-size:12px;font-weight:600;color:#e65100;">기본 목표율</div>
+      <div style="font-size:12px;font-weight:600;color:#e65100;">목표율 (기본)</div>
       <div style="display:flex;align-items:center;gap:6px;">
         <input type="number" id="eq-target-rate" value="0.5" min="0.01" max="10" step="0.01"
           style="width:80px;border:1px solid #cfd8dc;border-radius:6px;padding:5px 8px;font-size:13px;font-family:'Noto Sans KR',sans-serif;"/>
-        <span style="font-size:12px;color:#546e7a;">% (카테고리 미감지 시 적용 · 26년 카테고리별 목표율 자동 반영)</span>
+        <span style="font-size:12px;color:#546e7a;">% · 26년 카테고리별 목표율 자동 적용 (엑셀 데이터 기준) / 여러 상품 분석 시 카테고리 미감지 상품에 이 값 적용</span>
       </div>
     </div>
 
@@ -1459,7 +1459,7 @@ function judgeColor(j) {
   return "color:#f57f17;";
 }
 
-function renderResult(d, records) {
+function renderResult(d, records, mfrRecordsMap) {
   const pg = d.partnerGrade || {};
   const es = d.evaluationSummary || {};
   const mfIssues = extractMfIssuesFromRecords(records);
@@ -1504,14 +1504,9 @@ function renderResult(d, records) {
   }).join("");
 
   const html = `
-  <!-- 종합 등급 카드 -->
+  <!-- 헤더 카드 -->
   <div class="grade-hero">
-    <div class="grade-hero-left">
-      <div class="grade-hero-label">종합 등급</div>
-      <div class="grade-large ${overallGrCls}">${overallGr}</div>
-      <div style="font-size:11px;opacity:.6;margin-top:2px;">${pg.overallScore !== undefined ? pg.overallScore + "점" : ""}</div>
-    </div>
-    <div class="grade-hero-mid">
+    <div class="grade-hero-mid" style="flex:1;">
       <div class="grade-hero-name">${esc(es.manufacturer || S.selectedMfr || "-")}</div>
       <div class="grade-hero-sub">${esc(es.partner || "")}${es.partner && es.product ? " · " : ""}${esc(es.product || "")}${es.category ? " | " + esc(es.category) : ""}</div>
       <div class="grade-hero-pills">
@@ -1519,10 +1514,6 @@ function renderResult(d, records) {
         <span class="gpill ${trendPillClass(pg.trend)}">📈 ${pg.trendLabel || "-"}</span>
         <span class="gpill gpill-info">${pg.complianceStatus || "-"}</span>
       </div>
-    </div>
-    <div class="grade-hero-right">
-      <div class="risk-label">종합 등급</div>
-      <div class="grade-large ${overallGrCls}" style="font-size:28px;">${overallGr}</div>
     </div>
   </div>
 
@@ -1543,11 +1534,6 @@ function renderResult(d, records) {
       <div class="metric-value" style="font-size:.9rem;">${pg.trendLabel || "-"}</div>
       <div class="metric-sub">최근 심사: ${es.latestDate || "-"}</div>
     </div>
-    <div class="metric-card">
-      <div class="metric-label">종합 등급</div>
-      <div class="metric-value grade-large ${overallGrCls}" style="font-size:1.8rem;">${overallGr}</div>
-      <div class="metric-sub">${isFashion ? "품질불만율 100%" : "제조사 50% + 품질불만율 50%"}</div>
-    </div>
   </div>
 
   <!-- 평가 이력 타임라인 -->
@@ -1556,19 +1542,41 @@ function renderResult(d, records) {
     <div class="timeline">${timelineHtml}</div>
   </div>
 
-  <!-- 제조사 현장 평가 부적합 요약 -->
-  ${mfIssues.length > 0 ? `
-  <div class="block">
-    <div class="block-head">🏭 제조사 현장 평가 부적합 요약 <span class="cnt">${mfIssues.length}건</span></div>
-    ${mfIssues.map(i => `
-    <div class="issue-item">
+  <!-- 제조사 현장 평가 부적합 요약 (제조사별) -->
+  ${(() => {
+    const map = mfrRecordsMap && Object.keys(mfrRecordsMap).length > 0 ? mfrRecordsMap : null;
+    if (map) {
+      // 제조사별 분리 표시
+      const blocks = Object.entries(map).map(([mfrName, recs]) => {
+        const issues = extractMfIssuesFromRecords(recs);
+        if (!issues.length) return "";
+        return `<div class="block">
+    <div class="block-head">🏭 ${esc(mfrName)} 현장 평가 부적합 요약 <span class="cnt">${issues.length}건</span></div>
+    ${issues.map(i => `<div class="issue-item">
       <div class="issue-score">${esc(i.score || "")}</div>
       <div class="issue-body">
         <div class="issue-section">${esc(i.section || "")} · ${esc(i.item || "")}</div>
         <div class="issue-text">${esc(i.finding || "")}</div>
       </div>
     </div>`).join("")}
-  </div>` : ""}
+  </div>`;
+      }).join("");
+      return blocks;
+    } else if (mfIssues.length > 0) {
+      // 단일 제조사 기존 방식
+      return `<div class="block">
+    <div class="block-head">🏭 제조사 현장 평가 부적합 요약 <span class="cnt">${mfIssues.length}건</span></div>
+    ${mfIssues.map(i => `<div class="issue-item">
+      <div class="issue-score">${esc(i.score || "")}</div>
+      <div class="issue-body">
+        <div class="issue-section">${esc(i.section || "")} · ${esc(i.item || "")}</div>
+        <div class="issue-text">${esc(i.finding || "")}</div>
+      </div>
+    </div>`).join("")}
+  </div>`;
+    }
+    return "";
+  })()}
 
   <!-- 품질불만 분석 -->
   <div class="block">
@@ -2281,7 +2289,7 @@ async function runExcelAnalysis() {
     // eq-result-wrap에: 상품별 등급 카드 + AI 분석 텍스트
     const representativeRecs = uniqueMfrNames.length > 0 && mfrRecordsMap[uniqueMfrNames[0]]
       ? mfrRecordsMap[uniqueMfrNames[0]] : [];
-    renderResult(parsed, representativeRecs);
+    renderResult(parsed, representativeRecs, mfrRecordsMap);
     const rendered = document.getElementById("result-wrap");
     const aiHtml = rendered?.innerHTML || "";
     rendered.style.display = "none";
