@@ -214,6 +214,9 @@ body{font-family:'Noto Sans KR',sans-serif;background:#f0f2f5;color:#1a1a2e;min-
   .grade-hero{grid-template-columns:auto 1fr;}
   .grade-hero-right{grid-column:1/-1;text-align:left;display:flex;gap:12px;align-items:center;}
 }
+.cat-rate-btn-wrap:hover .cat-rate-popup { display:block !important; }
+.cat-rate-popup tbody tr:nth-child(even) { background:#fafafa; }
+.cat-rate-popup tbody tr:hover { background:#fff8e1; }
 </style>
 </head>
 <body>
@@ -302,6 +305,20 @@ body{font-family:'Noto Sans KR',sans-serif;background:#f0f2f5;color:#1a1a2e;min-
   <!-- 엑셀 품질 인사이트 리포트 결과 (엑셀 카드 바로 아래) -->
   <div id="excel-report-wrap" style="display:none;"></div>
 
+  <!-- ④ Risk History 업로드 (선택) — 품질 인사이트 리포트 생성 버튼 아래 -->
+  <div class="card">
+    <div class="card-title">📑 Risk History 업로드
+      <span class="ct-badge" style="background:#e3f2fd;color:#1565c0;">선택 사항</span>
+    </div>
+    <div class="upload-box" id="risk-upload-box">
+      <input type="file" accept=".xlsx,.xls" id="risk-input" onchange="handleRiskExcel(this)"/>
+      <div class="upload-icon">📊</div>
+      <div class="upload-label">Risk History Excel 파일</div>
+      <div class="upload-sub">manageGoodsRiskHistory 파일을 선택하세요 (선택)</div>
+      <div class="upload-filename" id="risk-name"></div>
+    </div>
+  </div>
+
   <!-- 엑셀 리포트 기반 종합 결론 분석 (PDF 카드 위) -->
   <div id="eq-analyze-area" style="display:none;" class="card">
     <div class="card-title">🤖 엑셀 데이터 기반 종합 결론 분석
@@ -314,7 +331,23 @@ body{font-family:'Noto Sans KR',sans-serif;background:#f0f2f5;color:#1a1a2e;min-
         <div style="font-size:12px;font-weight:600;color:#0f2547;">상품별 제조사 및 평가 회차 매핑</div>
         <button class="btn btn-dark" style="font-size:11px;padding:4px 12px;" onclick="loadRecordsAndRefreshMap()">🔄 평가 이력 불러오기</button>
         <span id="load-status" style="font-size:11px;color:#78909c;"></span>
-        <button onclick="downloadCatTargetRateExcel()" style="margin-left:auto;display:flex;align-items:center;gap:5px;padding:4px 12px;background:#fff;border:1px solid #fb8c00;border-radius:6px;color:#e65100;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;">📥 26년 카테고리별 목표율</button>
+        <div style="margin-left:auto;position:relative;" class="cat-rate-btn-wrap">
+          <button onclick="downloadCatTargetRateExcel()" style="display:flex;align-items:center;gap:5px;padding:4px 12px;background:#fff;border:1px solid #fb8c00;border-radius:6px;color:#e65100;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;">📥 26년 카테고리별 목표율</button>
+          <div class="cat-rate-popup" style="display:none;position:absolute;right:0;top:calc(100% + 6px);z-index:999;background:#fff;border:1px solid #e0e0e0;border-radius:10px;box-shadow:0 4px 18px rgba(0,0,0,.13);padding:12px 14px;min-width:320px;max-height:420px;overflow-y:auto;">
+            <div style="font-size:12px;font-weight:700;color:#0f2547;margin-bottom:8px;">📊 26년 카테고리별 품질불만 목표율</div>
+            <table style="width:100%;border-collapse:collapse;font-size:11px;">
+              <thead><tr style="background:#f5f7fa;">
+                <th colspan="2" style="padding:4px 6px;text-align:left;color:#546e7a;font-weight:600;border-bottom:1px solid #e0e0e0;">대분류</th>
+                <th style="padding:4px 6px;text-align:left;color:#546e7a;font-weight:600;border-bottom:1px solid #e0e0e0;">중분류</th>
+                <th style="padding:4px 6px;text-align:right;color:#546e7a;font-weight:600;border-bottom:1px solid #e0e0e0;">목표율</th>
+                <th style="padding:4px 6px;text-align:right;color:#546e7a;font-weight:600;border-bottom:1px solid #e0e0e0;">허용치</th>
+                <th style="padding:4px 6px;text-align:right;color:#546e7a;font-weight:600;border-bottom:1px solid #e0e0e0;">한계치</th>
+              </tr></thead>
+              <tbody id="cat-rate-popup-body"></tbody>
+            </table>
+            <div style="font-size:10px;color:#90a4ae;margin-top:8px;">※ 허용치=목표율×2 / 한계치=목표율×3 · 클릭하면 엑셀 다운로드</div>
+          </div>
+        </div>
       </div>
       <p style="font-size:11px;color:#90a4ae;margin-bottom:8px;">평가이력이 없는 상품은 <b>없음</b>으로 선택 → 품질불만율 100% 기준 적용</p>
       <div id="eq-mfr-map-list" style="display:flex;flex-direction:column;gap:6px;"></div>
@@ -334,20 +367,6 @@ body{font-family:'Noto Sans KR',sans-serif;background:#f0f2f5;color:#1a1a2e;min-
       <div class="upload-label">품질 인사이트 리포트 PDF</div>
       <div class="upload-sub">복수 파일 선택 가능 (Ctrl/Cmd+클릭) · PDF 필수</div>
       <div class="upload-filename" id="pdf-name"></div>
-    </div>
-  </div>
-
-  <!-- ④ Risk History 업로드 (선택) -->
-  <div class="card">
-    <div class="card-title">📑 Risk History 업로드
-      <span class="ct-badge" style="background:#e3f2fd;color:#1565c0;">선택 사항</span>
-    </div>
-    <div class="upload-box" id="risk-upload-box">
-      <input type="file" accept=".xlsx,.xls" id="risk-input" onchange="handleRiskExcel(this)"/>
-      <div class="upload-icon">📊</div>
-      <div class="upload-label">Risk History Excel 파일</div>
-      <div class="upload-sub">manageGoodsRiskHistory 파일을 선택하세요 (선택)</div>
-      <div class="upload-filename" id="risk-name"></div>
     </div>
   </div>
 
@@ -2170,14 +2189,36 @@ function downloadCatTargetRateExcel() {
   if (typeof XLSX === "undefined") { showToast("xlsx 라이브러리 로딩 중입니다. 잠시 후 다시 시도해주세요.", false); return; }
   const wb = XLSX.utils.book_new();
   const ws = XLSX.utils.aoa_to_sheet(CAT_FULL_DATA);
-  // 컬럼 너비
-  ws["!cols"] = [
-    {wch:5},{wch:8},{wch:14},{wch:8},{wch:28},
-    {wch:18},{wch:18},{wch:18}
-  ];
+  ws["!cols"] = [{wch:5},{wch:8},{wch:14},{wch:8},{wch:28},{wch:18},{wch:18},{wch:18}];
   XLSX.utils.book_append_sheet(wb, ws, "26년_카테고리별목표율");
   XLSX.writeFile(wb, "QA품질목표관리_2026.xlsx");
 }
+
+(function initCatRatePopup() {
+  // 팝업 테이블 행 채우기 (DOM 준비 후 실행)
+  const fill = () => {
+    const tbody = document.getElementById("cat-rate-popup-body");
+    if (!tbody) return;
+    let prevMaj = "";
+    // CAT_FULL_DATA[0]은 헤더이므로 1번부터
+    CAT_FULL_DATA.slice(1).forEach(row => {
+      const [, maj, majName, sub, subName, target, allow, limit] = row;
+      const tr = document.createElement("tr");
+      const majCell = prevMaj === majName
+        ? `<td style="padding:4px 6px;color:#bbb;">↑</td><td style="padding:4px 6px;color:#bbb;">↑</td>`
+        : `<td style="padding:4px 6px;font-weight:600;color:#0f2547;">${maj} ${majName}</td><td></td>`;
+      prevMaj = majName;
+      tr.innerHTML = `${majCell}
+        <td style="padding:4px 6px;color:#37474f;">${sub} ${subName}</td>
+        <td style="padding:4px 6px;text-align:right;font-weight:700;color:#e65100;">${target}%</td>
+        <td style="padding:4px 6px;text-align:right;color:#546e7a;">${allow}%</td>
+        <td style="padding:4px 6px;text-align:right;color:#546e7a;">${limit}%</td>`;
+      tbody.appendChild(tr);
+    });
+  };
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", fill);
+  else fill();
+})();
 
 // 상품별 등급 계산 (코드 결정 — AI 비의존)
 function calcProductGrades(products, productMfrMap, productRecordMap, defaultRatePct) {
