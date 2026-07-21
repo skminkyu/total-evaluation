@@ -1642,7 +1642,7 @@ function renderResult(d, records, mfrRecordsMap) {
   <!-- 종합분석 -->
   <div class="block">
     <div class="block-head">🔗 종합분석 — 제조사 평가 이력 × 품질불만율 × Risk History 연관성</div>
-    <div id="synth-view" class="conclusion-box" style="white-space:pre-line;">${esc(d.synthAnalysis || d.crossAnalysis || "")}</div>
+    <div id="synth-view" class="conclusion-box" style="white-space:pre-line;">${esc(formatSynthAnalysis(d.synthAnalysis || d.crossAnalysis || ""))}</div>
     <textarea id="synth-editor" class="synth-edit-area" style="display:none;">${esc(d.synthAnalysis || d.crossAnalysis || "")}</textarea>
     <div class="synth-btn-row">
       <button class="synth-btn synth-btn-edit" id="synth-btn-edit" onclick="startSynthEdit()">✏️ 수정</button>
@@ -2675,8 +2675,18 @@ function generateExcelReport() {
 
 function cleanText(s) {
   if (s === undefined || s === null) return "";
-  // Remove garbled PDF replacement characters (◆, □, ▶, ◇, ■ used as encoding artifacts)
-  return String(s).replace(/[◆◇□■▶▷►◀◁◄]/g, "").replace(/\s{2,}/g, " ").trim();
+  // Replace garbled PDF replacement characters with a space to prevent word merging
+  return String(s).replace(/[◆◇□■▶▷►◀◁◄]/g, " ").replace(/\s{2,}/g, " ").trim();
+}
+
+function formatSynthAnalysis(s) {
+  if (!s) return "";
+  // ①②③④⑤⑥ 앞에 빈 줄 삽입하여 문단 분리
+  let text = cleanText(s);
+  text = text.replace(/([①②③④⑤⑥⑦⑧⑨])/g, "\n\n$1");
+  // 【종합분석】 헤더 제거 (제목은 block-head에 있음)
+  text = text.replace(/【종합분석】\s*/g, "");
+  return text.trim();
 }
 function esc(s) {
   if (s === undefined || s === null) return "";
