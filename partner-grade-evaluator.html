@@ -818,14 +818,14 @@ function getRecordIssueKeys(rec) {
   Object.keys(rec.J).forEach(k => {
     if (k.endsWith("_note") || k.endsWith("_bp") || k === "기타_텍스트") return;
     const v = rec.J[k];
+    if (v === undefined || v === "" || v === "N/A") return;
     const bpFromJ = rec.J[k + "_bp"];
     const def = ITEM_DEF[k];
     const bp = (bpFromJ !== undefined && bpFromJ !== "" && bpFromJ !== "N/A")
       ? Number(bpFromJ) : (def ? def.bp : null);
     const note = rec.J[k + "_note"] || "";
-    if (v !== undefined && v !== "" && v !== "N/A" && bp !== null && Number(v) < bp && note.trim()) {
-      keys.add(k);
-    }
+    const isDeducted = bp !== null ? Number(v) < bp : true;
+    if (note.trim() && isDeducted) keys.add(k);
   });
   return keys;
 }
@@ -859,17 +859,22 @@ function formatRecordsForAI(records) {
       Object.keys(rec.J).forEach(k => {
         if (k.endsWith("_note") || k.endsWith("_bp") || k === "기타_텍스트") return;
         const v = rec.J[k];
+        if (v === undefined || v === "" || v === "N/A") return;
         const bpFromJ = rec.J[k + "_bp"];
         const def = ITEM_DEF[k];
         const bp = (bpFromJ !== undefined && bpFromJ !== "" && bpFromJ !== "N/A")
           ? Number(bpFromJ) : (def ? def.bp : null);
         const note = rec.J[k + "_note"] || "";
-        if (v !== undefined && v !== "" && v !== "N/A" && bp !== null && Number(v) < bp && note.trim()) {
-          // 이전 회차에서도 같은 항목이 부적합이었는지 표시
-          const wasIssue = i > 0 && issueKeysByRec.slice(0, i).some(s => s.has(k));
-          const tag = wasIssue ? " [미개선/반복]" : (i > 0 ? " [신규]" : "");
-          issues.push(`  · 항목ID(${k}): ${v}/${bp}점 → ${note}${tag}`);
-        }
+        if (!note.trim()) return;
+        // bp 알 수 없어도 비고 있으면 포함 (소규모HACCP 등 ITEM_DEF 미등록 항목 포함)
+        const scored = Number(v);
+        const isDeducted = bp !== null ? scored < bp : true;
+        if (!isDeducted) return;
+        const scoreStr = bp !== null ? `${scored}/${bp}점` : `${scored}점`;
+        const wasIssue = i > 0 && issueKeysByRec.slice(0, i).some(s => s.has(k));
+        const tag = wasIssue ? " [미개선/반복]" : (i > 0 ? " [신규]" : "");
+        const itemLabel = def ? `${def.section} · ${def.item}` : k;
+        issues.push(`  · ${itemLabel} (${scoreStr}) → ${note}${tag}`);
       });
     }
     if (issues.length > 0) {
@@ -1422,14 +1427,16 @@ function extractMfIssuesFromRecords(records) {
         ? Number(bpFromJ)
         : (def ? def.bp : null);
       const note = rec.J[k + "_note"] || "";
-      if (bp === null || bp <= 0 || Number(v) >= bp || !note.trim()) return;
+      if (!note.trim()) return;
       const scored = Number(v);
-      const deductPct = bp > 0 ? (bp - scored) / bp : 0;
+      const isDeducted = bp !== null ? (bp > 0 && scored < bp) : true;
+      if (!isDeducted) return;
+      const deductPct = bp !== null && bp > 0 ? (bp - scored) / bp : 0.5;
       const severity = deductPct >= 0.5 ? "high" : deductPct >= 0.3 ? "medium" : "low";
       allIssues.push({
         section: def ? def.section : (CAT_NAMES[rec.clType] || rec.clType),
         item: def ? def.item : k,
-        score: scored + "/" + bp + "점",
+        score: bp !== null ? `${scored}/${bp}점` : `${scored}점`,
         severity, finding: note,
         _deductPct: deductPct, _date: evalDate
       });
