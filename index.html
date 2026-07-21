@@ -271,6 +271,8 @@ body{font-family:'Noto Sans KR',sans-serif;background:#f0f2f5;color:#1a1a2e;min-
     <!-- 상품 선택 -->
     <div id="eq-product-area" style="display:none;margin-bottom:12px;">
       <div style="font-size:12px;font-weight:600;color:#0f2547;margin-bottom:6px;">③ 상품 선택 <span style="font-size:10px;color:#90a4ae;">(복수 선택 가능)</span></div>
+      <input type="text" id="eq-product-search" placeholder="상품명 또는 상품코드 검색..." oninput="filterEqProductList(this.value)"
+        style="width:100%;box-sizing:border-box;border:1px solid #cfd8dc;border-radius:6px;padding:5px 10px;font-size:12px;font-family:'Noto Sans KR',sans-serif;margin-bottom:6px;"/>
       <div id="eq-product-list" style="display:flex;flex-direction:column;gap:4px;max-height:200px;overflow-y:auto;border:1px solid #e0e4ea;border-radius:7px;padding:8px;"></div>
     </div>
 
@@ -1941,6 +1943,15 @@ async function handleEqRate(input) {
   showToast(`품질불만율 파일 로드 완료 (${EQ.rateRows.length}건)`, true);
 }
 
+function filterEqProductList(query) {
+  const q = query.trim().toLowerCase();
+  document.querySelectorAll("#eq-product-list > div").forEach(div => {
+    const label = div.querySelector("label");
+    const text = label ? label.textContent.toLowerCase() : "";
+    div.style.display = !q || text.includes(q) ? "" : "none";
+  });
+}
+
 function filterEqPartnerList(query) {
   const q = query.trim().toLowerCase();
   document.querySelectorAll("#eq-partner-list > div").forEach(div => {
@@ -1971,6 +1982,8 @@ function onEqPartnerChange() {
     div.appendChild(cb); div.appendChild(label);
     listEl.appendChild(div);
   });
+  const prodSearch = document.getElementById("eq-product-search");
+  if (prodSearch) prodSearch.value = "";
   document.getElementById("eq-product-area").style.display = products.length ? "block" : "none";
   document.getElementById("eq-detail-area").style.display = products.length ? "block" : "none";
   updateEqGenerateBtn();
