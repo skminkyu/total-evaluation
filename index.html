@@ -263,6 +263,8 @@ body{font-family:'Noto Sans KR',sans-serif;background:#f0f2f5;color:#1a1a2e;min-
     <!-- 협력사 선택 (복수) -->
     <div id="eq-partner-area" style="display:none;margin-bottom:12px;">
       <div style="font-size:12px;font-weight:600;color:#0f2547;margin-bottom:6px;">② 협력사 선택 <span style="font-size:10px;color:#90a4ae;">(복수 선택 가능)</span></div>
+      <input type="text" id="eq-partner-search" placeholder="협력사명 검색..." oninput="filterEqPartnerList(this.value)"
+        style="width:100%;box-sizing:border-box;border:1px solid #cfd8dc;border-radius:6px;padding:5px 10px;font-size:12px;font-family:'Noto Sans KR',sans-serif;margin-bottom:6px;"/>
       <div id="eq-partner-list" style="display:flex;flex-direction:column;gap:4px;max-height:180px;overflow-y:auto;border:1px solid #e0e4ea;border-radius:7px;padding:8px;"></div>
     </div>
 
@@ -1931,10 +1933,21 @@ async function handleEqRate(input) {
     div.appendChild(cb); div.appendChild(label);
     listEl.appendChild(div);
   });
+  const searchEl = document.getElementById("eq-partner-search");
+  if (searchEl) searchEl.value = "";
   document.getElementById("eq-partner-area").style.display = "block";
   document.getElementById("eq-rate-box").classList.add("has-file");
   document.getElementById("eq-rate-name").textContent = `✅ ${file.name} (${EQ.rateRows.length}개 상품 파싱)`;
   showToast(`품질불만율 파일 로드 완료 (${EQ.rateRows.length}건)`, true);
+}
+
+function filterEqPartnerList(query) {
+  const q = query.trim().toLowerCase();
+  document.querySelectorAll("#eq-partner-list > div").forEach(div => {
+    const label = div.querySelector("label");
+    const text = label ? label.textContent.toLowerCase() : "";
+    div.style.display = !q || text.includes(q) ? "" : "none";
+  });
 }
 
 function onEqPartnerChange() {
