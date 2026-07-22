@@ -214,9 +214,8 @@ body{font-family:'Noto Sans KR',sans-serif;background:#f0f2f5;color:#1a1a2e;min-
   .grade-hero{grid-template-columns:auto 1fr;}
   .grade-hero-right{grid-column:1/-1;text-align:left;display:flex;gap:12px;align-items:center;}
 }
-.cat-rate-btn-wrap:hover .cat-rate-popup { display:block !important; }
-.cat-rate-popup tbody tr:nth-child(even) { background:#fafafa; }
-.cat-rate-popup tbody tr:hover { background:#fff8e1; }
+.cat-rate-modal-tbody tr:nth-child(even) { background:#fafafa; }
+.cat-rate-modal-tbody tr:hover { background:#fff8e1; }
 </style>
 </head>
 <body>
@@ -335,23 +334,7 @@ body{font-family:'Noto Sans KR',sans-serif;background:#f0f2f5;color:#1a1a2e;min-
         <div style="font-size:12px;font-weight:600;color:#0f2547;">상품별 제조사 및 평가 회차 매핑</div>
         <button class="btn btn-dark" style="font-size:11px;padding:4px 12px;" onclick="loadRecordsAndRefreshMap()">🔄 평가 이력 불러오기</button>
         <span id="load-status" style="font-size:11px;color:#78909c;"></span>
-        <div style="margin-left:auto;position:relative;" class="cat-rate-btn-wrap">
-          <button onclick="downloadCatTargetRateExcel()" style="display:flex;align-items:center;gap:5px;padding:4px 12px;background:#fff;border:1px solid #fb8c00;border-radius:6px;color:#e65100;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;">📥 26년 카테고리별 목표율</button>
-          <div class="cat-rate-popup" style="display:none;position:absolute;right:0;top:calc(100% + 6px);z-index:999;background:#fff;border:1px solid #e0e0e0;border-radius:10px;box-shadow:0 4px 18px rgba(0,0,0,.13);padding:12px 14px;min-width:320px;max-height:420px;overflow-y:auto;">
-            <div style="font-size:12px;font-weight:700;color:#0f2547;margin-bottom:8px;">📊 26년 카테고리별 품질불만 목표율</div>
-            <table style="width:100%;border-collapse:collapse;font-size:11px;">
-              <thead><tr style="background:#f5f7fa;">
-                <th colspan="2" style="padding:4px 6px;text-align:left;color:#546e7a;font-weight:600;border-bottom:1px solid #e0e0e0;">대분류</th>
-                <th style="padding:4px 6px;text-align:left;color:#546e7a;font-weight:600;border-bottom:1px solid #e0e0e0;">중분류</th>
-                <th style="padding:4px 6px;text-align:right;color:#546e7a;font-weight:600;border-bottom:1px solid #e0e0e0;">목표율</th>
-                <th style="padding:4px 6px;text-align:right;color:#546e7a;font-weight:600;border-bottom:1px solid #e0e0e0;">허용치</th>
-                <th style="padding:4px 6px;text-align:right;color:#546e7a;font-weight:600;border-bottom:1px solid #e0e0e0;">한계치</th>
-              </tr></thead>
-              <tbody id="cat-rate-popup-body"></tbody>
-            </table>
-            <div style="font-size:10px;color:#90a4ae;margin-top:8px;">※ 허용치=목표율×2 / 한계치=목표율×3 · 클릭하면 엑셀 다운로드</div>
-          </div>
-        </div>
+        <button onclick="openCatRateModal()" style="margin-left:auto;display:flex;align-items:center;gap:5px;padding:4px 12px;background:#fff;border:1px solid #fb8c00;border-radius:6px;color:#e65100;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;">📊 26년 카테고리별 목표율</button>
       </div>
       <p style="font-size:11px;color:#90a4ae;margin-bottom:8px;">평가이력이 없는 상품은 <b>없음</b>으로 선택 → 품질불만율 100% 기준 적용</p>
       <div id="eq-mfr-map-list" style="display:flex;flex-direction:column;gap:6px;"></div>
@@ -2227,10 +2210,17 @@ function downloadCatTargetRateExcel() {
   XLSX.writeFile(wb, "QA품질목표관리_2026.xlsx");
 }
 
+function openCatRateModal() {
+  document.getElementById("cat-rate-modal").style.display = "flex";
+}
+function closeCatRateModal() {
+  document.getElementById("cat-rate-modal").style.display = "none";
+}
+
 (function initCatRatePopup() {
-  // 팝업 테이블 행 채우기 (DOM 준비 후 실행)
+  // 모달 테이블 행 채우기 (DOM 준비 후 실행)
   const fill = () => {
-    const tbody = document.getElementById("cat-rate-popup-body");
+    const tbody = document.getElementById("cat-rate-modal-body");
     if (!tbody) return;
     let prevMaj = "";
     // CAT_FULL_DATA[0]은 헤더이므로 1번부터
@@ -2700,5 +2690,32 @@ function esc(s) {
 ════════════════════════════════════════ */
 updateStatusChips();
 </script>
+<!-- 26년 카테고리별 목표율 모달 -->
+<div id="cat-rate-modal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.45);align-items:center;justify-content:center;" onclick="if(event.target===this)closeCatRateModal()">
+  <div style="background:#fff;border-radius:14px;box-shadow:0 8px 40px rgba(0,0,0,.22);width:520px;max-width:94vw;max-height:85vh;display:flex;flex-direction:column;overflow:hidden;">
+    <!-- 모달 헤더 -->
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid #e0e0e0;background:#f5f7fa;border-radius:14px 14px 0 0;">
+      <div style="font-size:14px;font-weight:700;color:#0f2547;">📊 26년 카테고리별 품질불만 목표율</div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <button onclick="downloadCatTargetRateExcel()" style="padding:5px 12px;background:#fff;border:1px solid #fb8c00;border-radius:6px;color:#e65100;font-size:11px;font-weight:600;cursor:pointer;">📥 엑셀 다운로드</button>
+        <button onclick="closeCatRateModal()" style="background:none;border:none;font-size:20px;color:#90a4ae;cursor:pointer;line-height:1;padding:2px 6px;">×</button>
+      </div>
+    </div>
+    <!-- 모달 본문 -->
+    <div style="overflow-y:auto;padding:16px 20px;">
+      <table style="width:100%;border-collapse:collapse;font-size:12px;">
+        <thead><tr style="background:#f5f7fa;position:sticky;top:0;">
+          <th colspan="2" style="padding:6px 8px;text-align:left;color:#546e7a;font-weight:600;border-bottom:2px solid #e0e0e0;">대분류</th>
+          <th style="padding:6px 8px;text-align:left;color:#546e7a;font-weight:600;border-bottom:2px solid #e0e0e0;">중분류</th>
+          <th style="padding:6px 8px;text-align:right;color:#546e7a;font-weight:600;border-bottom:2px solid #e0e0e0;">목표율</th>
+          <th style="padding:6px 8px;text-align:right;color:#546e7a;font-weight:600;border-bottom:2px solid #e0e0e0;">허용치</th>
+          <th style="padding:6px 8px;text-align:right;color:#546e7a;font-weight:600;border-bottom:2px solid #e0e0e0;">한계치</th>
+        </tr></thead>
+        <tbody id="cat-rate-modal-body" class="cat-rate-modal-tbody"></tbody>
+      </table>
+      <div style="font-size:11px;color:#90a4ae;margin-top:10px;">※ 허용치 = 목표율 × 2 &nbsp;/&nbsp; 한계치 = 목표율 × 3</div>
+    </div>
+  </div>
+</div>
 </body>
 </html>
